@@ -258,7 +258,6 @@ function onHover(name, which, g, e) {
     // 基准圆：交互图同款 —— 其他圆淡出 + 当前圆突出 + 黑色要素标签
     groups.forEach(o => { if (o.g !== g) o.g.classList.add("faded"); });
     g.classList.add("active");
-    g.parentNode.appendChild(g);  // 置顶
 
     const fmt = (v, d) => v.toFixed(d === undefined ? 3 : d);
     tooltip.innerHTML =
@@ -284,10 +283,9 @@ function onHover(name, which, g, e) {
       '<div class="tt-row"><span>连续性</span><b>' + fmt(it.r.cont, 2) + '</b></div>' +
       '<div class="tt-row"><span>甜品度</span><b>' + fmt(it.r.value, 2) + '</b></div>';
     g.classList.add("hl");
-    g.parentNode.appendChild(g);  // 置顶
   }
 
-  tooltip.style.display = "block";
+  tooltip.classList.add("show");
   tooltip.style.left = "0px";
   tooltip.style.top = "0px";
   moveTooltip(e);
@@ -305,7 +303,7 @@ function moveTooltip(e) {
   tooltip.style.top = y + "px";
 }
 function onLeave() {
-  tooltip.style.display = "none";
+  tooltip.classList.remove("show");
   groups.forEach(o => {
     o.g.classList.remove("active", "faded", "hl");
   });
