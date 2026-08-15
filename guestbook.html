@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>留言板 · Carrycore</title>
+  <meta name="description" content="留言板：纯文字留言，昵称 + 时间戳，仅保留最新 100 条。" />
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .gb-wrap { max-width: 720px; margin: 0 auto; }
+    .gb-tip { font-size: 13px; color: #8A8A93; margin: 8px 0 20px; }
+    .gb-form { background: #FAFAFB; border: 1px solid #E8E8EE; border-radius: 12px; padding: 16px; }
+    .gb-form label { display: block; font-size: 13px; color: #6E6E78; margin-bottom: 6px; }
+    .gb-form input,
+    .gb-form textarea {
+      width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 15px;
+      border: 1px solid #D8D8DE; border-radius: 8px; outline: none;
+      color: #1D1D1F; background: #fff; font-family: inherit;
+    }
+    .gb-form input:focus, .gb-form textarea:focus { border-color: #1D1D1F; }
+    .gb-form textarea { min-height: 110px; resize: vertical; }
+    .gb-form-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .gb-count { font-size: 12px; color: #B8B8C0; }
+    .gb-submit {
+      padding: 10px 26px; font-size: 14px; font-weight: 600; color: #fff;
+      background: #1D1D1F; border: none; border-radius: 8px; cursor: pointer;
+    }
+    .gb-submit:hover { background: #000; }
+    .gb-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .gb-msg { min-height: 20px; font-size: 13px; margin-top: 8px; }
+    .gb-msg.ok { color: #2E7D32; }
+    .gb-msg.err { color: #C0392B; }
+    .gb-list { margin-top: 24px; }
+    .gb-item {
+      padding: 14px 4px; border-bottom: 1px solid #EFEFF3;
+    }
+    .gb-item-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+    .gb-name { font-weight: 700; font-size: 15px; color: #1D1D1F; }
+    .gb-ts { font-size: 12px; color: #B8B8C0; }
+    .gb-text { font-size: 14px; color: #3A3A42; line-height: 1.7; word-break: break-word; white-space: pre-wrap; }
+    .gb-empty { text-align: center; color: #B8B8C0; font-size: 14px; padding: 40px 0; }
+    .gb-loading { text-align: center; color: #8A8A93; font-size: 13px; padding: 30px 0; }
+  </style>
+</head>
+<body>
+
+  <header class="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Carrycore<em>· 金融视觉志</em></a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="index.html">首页</a>
+        <a href="about.html">关于</a>
+        <a href="archive.html">归档</a>
+        <a href="guestbook.html" aria-current="page">留言板</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <article class="post">
+      <header class="post-head">
+        <h1>留言板</h1>
+        <time>随便聊聊</time>
+        <p class="post-sub">留下你想说的话，纯文字即可</p>
+      </header>
+
+      <div class="gb-wrap">
+        <p class="gb-tip">昵称 ≤ 10 字 · 内容 ≤ 200 字 · 仅保留最新 100 条（超出的自动清除不留档）</p>
+
+        <div class="gb-form">
+          <label for="gb-name">昵称</label>
+          <input type="text" id="gb-name" maxlength="10" placeholder="你的昵称" autocomplete="off" />
+          <label for="gb-text" style="margin-top:12px">留言</label>
+          <textarea id="gb-text" maxlength="200" placeholder="想说点什么…"></textarea>
+          <div class="gb-form-row">
+            <span class="gb-count" id="gb-count">0 / 200</span>
+            <button type="button" class="gb-submit" id="gb-submit">发布</button>
+          </div>
+          <p class="gb-msg" id="gb-msg"></p>
+        </div>
+
+        <div class="gb-list" id="gb-list">
+          <div class="gb-loading">加载中…</div>
+        </div>
+      </div>
+
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <small>© 2026 Carrycore · 用图片说话，用留白呼吸</small>
+      <a href="index.html">返回首页</a>
+    </div>
+  </footer>
+
+  <script>
+    // 留言板数据接口（通过 Workers Routes 绑到 carrycore.cc.cd/api/*，绕开 workers.dev 国内屏蔽）
+    var WORKER_URL = "/api";
+
+    var nameEl = document.getElementById("gb-name");
+    var textEl = document.getElementById("gb-text");
+    var countEl = document.getElementById("gb-count");
+    var msgEl = document.getElementById("gb-msg");
+    var listEl = document.getElementById("gb-list");
+    var submitBtn = document.getElementById("gb-submit");
+
+    function fmt(ts) {
+      var d = new Date(ts);
+      var p = function (n) { return (n < 10 ? "0" : "") + n; };
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    }
+
+    function render(list) {
+      listEl.innerHTML = "";
+      if (!list || list.length === 0) {
+        listEl.innerHTML = '<div class="gb-empty">还没有留言，来说第一句吧</div>';
+        return;
+      }
+      list.forEach(function (m) {
+        var item = document.createElement("div");
+        item.className = "gb-item";
+        item.innerHTML =
+          '<div class="gb-item-head"><span class="gb-name"></span><span class="gb-ts"></span></div>' +
+          '<div class="gb-text"></div>';
+        item.querySelector(".gb-name").textContent = m.name;
+        item.querySelector(".gb-ts").textContent = fmt(m.ts);
+        item.querySelector(".gb-text").textContent = m.text;
+        listEl.appendChild(item);
+      });
+    }
+
+    function load() {
+      listEl.innerHTML = '<div class="gb-loading">加载中…</div>';
+      fetch(WORKER_URL)
+        .then(function (r) { return r.json(); })
+        .then(render)
+        .catch(function () {
+          listEl.innerHTML = '<div class="gb-empty">留言板暂时无法连接，请稍后再试</div>';
+        });
+    }
+
+    textEl.addEventListener("input", function () {
+      countEl.textContent = textEl.value.length + " / 200";
+    });
+
+    submitBtn.addEventListener("click", function () {
+      var name = nameEl.value.trim();
+      var text = textEl.value.trim();
+      msgEl.className = "gb-msg";
+      if (!name) { msgEl.textContent = "请填写昵称"; msgEl.className = "gb-msg err"; nameEl.focus(); return; }
+      if (!text) { msgEl.textContent = "请填写留言内容"; msgEl.className = "gb-msg err"; textEl.focus(); return; }
+      submitBtn.disabled = true;
+      fetch(WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name, text: text })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res.ok) {
+            msgEl.textContent = "发布成功";
+            msgEl.className = "gb-msg ok";
+            nameEl.value = ""; textEl.value = "";
+            countEl.textContent = "0 / 200";
+            load();
+          } else {
+            msgEl.textContent = res.error || "发布失败";
+            msgEl.className = "gb-msg err";
+          }
+        })
+        .catch(function () {
+          msgEl.textContent = "网络错误，请稍后再试";
+          msgEl.className = "gb-msg err";
+        })
+        .finally(function () { submitBtn.disabled = false; });
+    });
+
+    load();
+  </script>
+</body>
+</html>
