@@ -97,7 +97,7 @@
 
   <script>
     // 留言板数据接口（通过 Workers Routes 绑到 carrycore.cc.cd/api/*，绕开 workers.dev 国内屏蔽）
-    var WORKER_URL = "/api";
+    var WORKER_URL = (window.location.protocol === "file:" ? "" : window.location.origin) + "/api";
 
     var nameEl = document.getElementById("gb-name");
     var textEl = document.getElementById("gb-text");
