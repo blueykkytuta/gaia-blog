@@ -1,0 +1,220 @@
+/* ============================================================
+   行业趋势路径页 — 专属样式
+   ============================================================ */
+
+/* 双日期按钮 */
+.trend-controls {
+  align-items: flex-start;
+}
+
+.trend-dates {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trend-dates .datepicker-wrap {
+  position: relative;
+}
+
+.trend-dates .date-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: #FFFFFF;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.dp-tag {
+  font-size: 11px;
+  color: #FFFFFF;
+  background: var(--ink);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-weight: 600;
+}
+
+.dp-tag-ref {
+  background: #9A9A9A;
+}
+
+/* 行业多选 */
+.sector-pick {
+  width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #FBFBFC;
+}
+
+.sp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.sp-head .sp-btn {
+  appearance: none;
+  border: 1px solid var(--hairline);
+  background: #FFFFFF;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.sp-head .sp-btn:hover {
+  color: var(--ink);
+}
+
+.sp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.sp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px dashed var(--hairline);
+}
+.sp-row:last-child { border-bottom: none; }
+.sp-row-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sp-item {
+  appearance: none;
+  border: 1px solid var(--hairline);
+  background: #FFFFFF;
+  border-radius: 999px;
+  padding: 3px 11px 3px 28px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all .15s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.band-dot {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+
+.sp-item:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.sp-item.on {
+  background: var(--ink);
+  color: #FFFFFF;
+  border-color: var(--ink);
+}
+.sp-item.on .band-dot { opacity: .55; }
+
+/* 箭头 marker 样式（SVG defs） */
+.arrow-line {
+  stroke: #B8B8B8;
+  stroke-width: 1.6;
+  stroke-dasharray: 6 4;
+  fill: none;
+}
+
+/* 滑块筛选淡出：趋势页组是 .sector-group（原 .dot.faded 不适用） */
+.sector-group.faded {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* 图表上方日期条 */
+.trend-datebar {
+  width: 100%;
+  margin: 2px 0 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: #FBFBFC;
+  font-size: 13px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.trend-datebar .db-tag {
+  display: inline-block;
+  font-size: 11px;
+  color: #FFFFFF;
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+.trend-datebar .db-tag.db-base { background: var(--ink); }
+.trend-datebar .db-tag.db-ref { background: #9A9A9A; }
+.trend-datebar .db-arrow { color: #B8B8B8; margin: 0 8px; }
+
+/* 对照点（灰色） */
+.ref-dot circle {
+  fill: #A6A6A6;
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 1;
+}
+
+.ref-dot .dot-label {
+  fill: #9A9A9A;
+}
+
+/* 图例 */
+.trend-legend {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 10px;
+}
+
+.trend-legend .lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-legend .lg-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+@media (max-width: 640px) {
+  .sp-list {
+    max-height: 320px;
+  }
+}
