@@ -62,6 +62,19 @@
             </div>
             <div class="sp-list" id="sp-list"></div>
           </div>
+          <!-- 新增筛选 1：最近日期强度数值 -->
+          <div class="dualfilter">
+            <span>最新强度</span>
+            <div class="df-track" id="df-strength"></div>
+            <span class="df-values" id="df-strength-values">–</span>
+          </div>
+          <!-- 新增筛选 2：近3日强弱变化 -->
+          <div class="dualfilter">
+            <span>近3日变化</span>
+            <div class="df-track" id="df-change"></div>
+            <span class="df-values" id="df-change-values">–</span>
+          </div>
+
           <button id="btn-replay" class="ctrl-btn" type="button">▶ 重播动画</button>
           <span id="dot-count" class="count-tag"></span>
         </div>
@@ -75,7 +88,7 @@
 
         <div class="trend-legend" id="legend"></div>
 
-        <p class="caption">相对强度 = 行业在全市场中的相对强弱（0~1） · 折线为所选行业在日期区间内的走势 · 数据来自独立数据库"相对强度表"</p>
+        <p class="caption">相对强度 = 行业在全市场中的相对强弱（0~1） · 折线为所选行业在日期区间内的走势 · “最新强度”按最近日期（2026-08-19）的强度筛选，“近3日变化”按该日期对比其前第 3 个有效日期（2026-08-14）的强弱变化筛选 · 数据来自独立数据库"相对强度表"</p>
       </div>
 
     </article>
@@ -89,7 +102,7 @@
   </footer>
 
   <script src="js/relative-data-0820b.js?v=1"></script>
-  <script src="js/relative-chart-v3.js?v=1"></script>
+  <script src="js/relative-chart-v4.js?v=1"></script>
   <script src="js/guard-0814b.js"></script>
   <script src="js/access-gate-0815.js"></script>
 </body>
