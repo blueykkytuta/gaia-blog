@@ -1,0 +1,90 @@
+/* ============================================================
+   相对强度表格页 — 专属样式（折线图 + 图例）
+   ============================================================ */
+
+/* 折线图基本 */
+.chart-area {
+  position: relative;
+}
+
+.line-chart-line {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: opacity .2s ease, stroke-width .2s ease;
+}
+
+.line-chart-line.dimmed {
+  opacity: 0.2;
+}
+
+/* 悬停高亮：当前曲线加粗，其余变暗（对齐交互图效果） */
+.line-chart-line.hl {
+  stroke-width: 4.2;
+  opacity: 1;
+}
+
+/* 不可见的加宽命中区，方便鼠标对准细曲线 */
+.line-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+/* 数据点小圆 */
+.pt-dot {
+  stroke: #FFFFFF;
+  stroke-width: 1;
+}
+
+/* 垂直参考线（hover） */
+.hover-line {
+  stroke: #C9C9C9;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* 图例 */
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+
+.trend-legend .lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background .15s ease;
+}
+
+.trend-legend .lg-item:hover {
+  background: #F3F4F6;
+}
+
+.trend-legend .lg-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.trend-legend .lg-item.off {
+  opacity: 0.4;
+}
+
+/* tooltip 行（复用 .tooltip 来自 interactive.css） */
+.tt-sub {
+  color: #B8B8C0;
+  font-size: 11px;
+  margin-top: 6px;
+}
