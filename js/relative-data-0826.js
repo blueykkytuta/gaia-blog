@@ -1,4 +1,6 @@
-{
+/* 自动生成文件 —— 由 tools/build-relative.py 从 data/relative-db.json 生成，请勿手改 */
+/* 修改数据请编辑 data/relative-db.json 后重新运行生成脚本 */
+window.RELATIVE_DB = {
   "meta": {
     "name": "数据库相对强度表",
     "description": "相对强度时间序列（日期 × 31 行业），与行业强弱数据库完全独立。value = 相对强度（0~1）。来源：用户提供 Excel。",
@@ -5062,4 +5064,4 @@
       "综合": 0.3534
     }
   }
-}
+};
