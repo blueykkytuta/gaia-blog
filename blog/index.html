@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Carrycore · 金融投资视觉画廊</title>
+  <meta name="description" content="一个以图片说话的金融投资与分析博客——利率、K线、黄金、估值与加密资产。" />
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://api.github.com">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Carrycore<em>· 金融视觉志</em></a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="index.html" aria-current="page">首页</a>
+        <a href="about.html">关于</a>
+        <a href="archive.html">归档</a>
+        <a href="guestbook.html">留言板</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>市场很吵<br>看图就够了</h1>
+        <p>用图表讲述关于投资的故事</p>
+        <p class="hero-mini"><a href="sector-strength-0811.html" id="sector-entry">→ 行业强弱分布交互图</a></p>
+        <p class="hero-mini"><a href="sector-trend-path.html" id="trend-entry">→ 行业趋势路径</a></p>
+        <p class="hero-mini"><a href="relative-strength.html" id="relative-entry">→ 相对强度表格</a></p>
+      </div>
+    </section>
+
+    <!-- 最新 5 篇博文：封面图 + 标题，无摘要 -->
+    <section class="gallery">
+      <div class="container">
+
+        <a class="gallery-item" href="posts/short-term-rebound-0826.html">
+          <figure class="gallery-figure">
+            <img src="posts/short-term-rebound-0826-1.png"
+                 alt="【260826】市场短期反弹是否进入尾声"
+                 width="1205" height="752" fetchpriority="high"
+                 style="aspect-ratio: 1205 / 752;">
+          </figure>
+          <div class="gallery-caption">
+            <h2>【260826】市场短期反弹是否进入尾声</h2>
+            <time datetime="2026-08-26">2026.08.26</time>
+          </div>
+        </a>
+
+        <a class="gallery-item" href="posts/csi1000-fund-flow-0811.html">
+          <figure class="gallery-figure">
+            <img src="posts/csi1000-fund-flow-0811.png"
+                 alt="【260811】中证1000资金继续流入"
+                 width="1165" height="451" fetchpriority="high"
+                 style="aspect-ratio: 1165 / 451;">
+          </figure>
+          <div class="gallery-caption">
+            <h2>【260811】中证1000资金继续流入</h2>
+            <time datetime="2026-08-11">2026.08.11</time>
+          </div>
+        </a>
+
+        <a class="gallery-item" href="posts/zhongzheng1000-strong-inflow.html">
+          <figure class="gallery-figure">
+            <img src="posts/csi1000-capital-flow.png"
+                 alt="中证1000继续强势，资金持续流入"
+                 width="1489" height="580" fetchpriority="high"
+                 style="aspect-ratio: 1489 / 580;">
+          </figure>
+          <div class="gallery-caption">
+            <h2>中证1000继续强势，资金持续流入</h2>
+            <time datetime="2026-08-10">2026.08.10</time>
+          </div>
+        </a>
+
+        <a class="gallery-item" href="posts/rate-cycle-and-asset-pricing.html">
+          <figure class="gallery-figure">
+            <img src="https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1600&h=1067&q=80"
+                 alt="利率周期与资产定价"
+                 width="1600" height="1067" fetchpriority="high">
+          </figure>
+          <div class="gallery-caption">
+            <h2>利率周期：一切估值的起点</h2>
+            <time datetime="2026-08-02">2026.08.02</time>
+          </div>
+        </a>
+
+        <a class="gallery-item" href="posts/k-line-volume-language.html">
+          <figure class="gallery-figure">
+            <img src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1600&h=1067&q=80"
+                 alt="K线图"
+                 width="1600" height="1067" loading="lazy">
+          </figure>
+          <div class="gallery-caption">
+            <h2>读 K 线：成交量的语言</h2>
+            <time datetime="2026-07-19">2026.07.19</time>
+          </div>
+        </a>
+
+        <a class="gallery-item" href="posts/gold-eternal-value.html">
+          <figure class="gallery-figure">
+            <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1600&h=1067&q=80"
+                 alt="穿越千年"
+                 width="1600" height="1067" loading="lazy">
+          </figure>
+          <div class="gallery-caption">
+            <h2>黄金：穿越千年的价值锚</h2>
+            <time datetime="2026-06-28">2026.06.28</time>
+          </div>
+        </a>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <small>© 2026 Carrycore · 用图片说话，用留白呼吸</small>
+      <a href="archive.html">全部文章 →</a>
+    </div>
+  </footer>
+
+  <!-- 交互图数据（供首页入口动态显示最新日期；文件名随数据库更新而变更） -->
+  <script src="js/sector-data-0826.js?v=1"></script>
+  <script>
+    (function () {
+      var el = document.getElementById("sector-entry");
+      if (el && window.SECTOR_DB && window.SECTOR_DB.dates) {
+        var dates = Object.keys(window.SECTOR_DB.dates).sort().reverse();
+        if (dates.length) {
+          el.textContent = "→ 行业强弱分布交互图（" + dates[0].replace(/-/g, ".") + "）";
+        }
+      }
+    })();
+  </script>
+
+  <script src="js/guard-0814b.js"></script>
+  <script src="js/access-gate-0815.js"></script>
+</body>
+</html>
