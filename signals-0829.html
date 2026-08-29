@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交易信号 · Carrycore</title>
+<style>
+  :root {
+    --fg:#1d1d1f; --muted:#86868b; --line:#e8e8ed; --bg:#fafafa; --card:#fff;
+    --red:#e24b4a; --green:#2f8a3b; --blue:#3a6ea5;
+    --long:#e24b4a; --short:#2f8a3b; --hold:#86868b;
+    --risk:#e24b4a; --reward:#2f8a3b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--fg); background:var(--bg); line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased; }
+  header { max-width:860px; margin:0 auto; padding:44px 24px 6px; }
+  h1 { font-size:27px; font-weight:600; margin:0 0 6px; letter-spacing:-.3px; }
+  .meta { color:var(--muted); font-size:13.5px; }
+  main { max-width:860px; margin:0 auto; padding:18px 24px 72px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px 24px; margin:18px 0; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+
+  .top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; }
+  .name { font-size:21px; font-weight:600; }
+  .code { color:var(--muted); font-size:13px; margin-left:8px; font-weight:400; }
+  .price { font-size:26px; font-weight:600; letter-spacing:-.5px; }
+  .price small { font-size:14px; color:var(--muted); font-weight:400; margin-left:6px; }
+
+  .badges { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .badge { display:inline-block; padding:5px 14px; border-radius:999px; font-size:15px; font-weight:600; letter-spacing:.3px; }
+  .long { color:var(--long); background:rgba(226,75,74,.10); }
+  .short { color:var(--short); background:rgba(47,138,59,.10); }
+  .hold { color:var(--hold); background:#f0f0f2; }
+  .pill { font-size:12.5px; padding:3px 11px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:#fff; }
+  .pill.strong { color:#b06a00; border-color:#f0d9a8; background:#fff8ec; }
+  .pill.weak { color:#5a6b8a; border-color:#cfd9e8; background:#f3f7fc; }
+  .pill.neutral { color:#6b6b70; }
+
+  /* panel */
+  .panel { margin-top:18px; border-radius:14px; padding:16px 18px; }
+  .panel.trade { background:linear-gradient(180deg,#fcfcfd,#f7f8fa); border:1px solid var(--line); }
+  .panel.ind { background:#fff; border:1px solid var(--line); }
+  .panel-title { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:0 0 14px; }
+
+  /* price scale (开仓阶梯) */
+  .scale { position:relative; height:54px; margin:6px 4px 2px; }
+  .scale .track { position:absolute; top:24px; left:0; right:0; height:2px; background:var(--line); border-radius:2px; }
+  .mk { position:absolute; top:12px; transform:translateX(-50%); text-align:center; }
+  .mk .dot { width:11px; height:11px; border-radius:50%; border:2px solid #fff; margin:0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
+  .mk .lab { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; }
+  .mk .val { font-size:13px; font-weight:600; white-space:nowrap; }
+  .mk.cur .val { color:var(--fg); }
+  .mk.entry .val { color:var(--fg); }
+  .mk.sl .val { color:var(--risk); }
+  .mk.tp .val { color:var(--reward); }
+
+  /* metric grid */
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+  .grid.three { grid-template-columns:repeat(3,1fr); }
+  .m { background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
+  .m .k { font-size:11.5px; color:var(--muted); }
+  .m .v { font-size:17px; font-weight:600; margin-top:2px; }
+  .m .v small { font-size:12px; color:var(--muted); font-weight:400; }
+  .m.risk .v { color:var(--risk); }
+  .m.reward .v { color:var(--reward); }
+  .m.hl { background:#fbfcfe; }
+
+  /* 指标分组 */
+  .indi-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sub { border:1px solid var(--line); border-radius:12px; padding:14px 15px; background:#fff; }
+  .sub h4 { margin:0 0 10px; font-size:14px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .sub h4 .tag { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+  .tag.up { color:var(--long); background:rgba(226,75,74,.10); }
+  .tag.down { color:var(--short); background:rgba(47,138,59,.10); }
+  .tag.flat { color:var(--muted); background:#f0f0f2; }
+  .tag.warn { color:#a36a00; background:rgba(255,170,40,.14); }  /* 排列与方向背离：橙色警告 */
+
+  /* 对齐标尺（均线组 / 布林带 相对位置）*/
+  .align { position:relative; height:32px; margin:4px 2px 2px; }
+  .align .ln { position:absolute; top:14px; left:0; right:0; height:2px; background:var(--line); border-radius:2px; }
+  .align .pt { position:absolute; top:9px; transform:translateX(-50%); width:9px; height:9px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.10); background:var(--blue); }
+  .align .pt.px { width:0; height:0; border:none; box-shadow:none; top:6px; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--fg); }
+  .align .cap { font-size:11px; color:var(--muted); }
+
+  /* 方向 / 形态 */
+  .dirline { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14.5px; flex-wrap:wrap; }
+  .dir-arrow { font-size:21px; font-weight:700; line-height:1; }
+  .dir-arrow.up { color:var(--red); }
+  .dir-arrow.down { color:var(--green); }
+  .dir-arrow.flat { color:var(--muted); }
+  .dirline b { font-weight:600; }
+  .dirline .muted { color:var(--muted); font-size:13px; }
+  .ma-chips { display:flex; gap:7px; margin-top:9px; flex-wrap:wrap; }
+  .chip { font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
+  .chip.up { color:var(--red); border-color:rgba(226,75,74,.30); background:rgba(226,75,74,.05); }
+  .chip.down { color:var(--green); border-color:rgba(47,138,59,.30); background:rgba(47,138,59,.05); }
+  .chip.flat { color:var(--muted); }
+
+  /* RSI 量能条 */
+  .gauge { position:relative; height:14px; background:linear-gradient(90deg, rgba(47,138,59,.18) 0%, #f0f0f2 35%, #f0f0f2 65%, rgba(226,75,74,.18) 100%); border-radius:7px; margin:6px 0 4px; }
+  .gauge .ptr { position:absolute; top:-3px; width:3px; height:20px; background:var(--fg); border-radius:2px; transform:translateX(-50%); }
+  .gauge .zone { display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); }
+
+  /* MACD 行 */
+  .kv { display:flex; justify-content:space-between; font-size:13.5px; padding:3px 0; }
+  .kv .k { color:var(--muted); }
+  .kv .v { font-weight:600; }
+  .histbar { height:8px; border-radius:4px; margin-top:4px; }
+
+  /* reasons */
+  .reasons { margin:16px 0 0; padding:0; list-style:none; }
+  .reasons li { font-size:14px; color:#444; padding:8px 0 8px 20px; position:relative; border-top:1px solid #f1f1f3; line-height:1.7; overflow-wrap:anywhere; word-break:break-word; }
+  .reasons li:first-child { border-top:none; }
+  .reasons li::before { content:""; position:absolute; left:2px; top:15px; width:6px; height:6px; border-radius:50%; background:var(--muted); }
+  .reasons li.pos::before { background:var(--long); }
+  .reasons li.neg::before { background:var(--short); }
+
+  footer { max-width:860px; margin:0 auto; padding:0 24px 48px; color:var(--muted); font-size:12.5px; line-height:1.7; }
+  .disclaim { background:#fff8ec; border:1px solid #f0d9a8; color:#9a6b00; border-radius:12px; padding:12px 16px; margin-top:22px; font-size:12.5px; }
+
+  /* 顶部汇总表 */
+  .summary { margin:6px 0 20px; }
+  .summary .panel-title { margin-bottom:10px; }
+  .summary-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .summary table { width:100%; border-collapse:collapse; font-size:14px; }
+  .summary th, .summary td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .summary th { font-size:11.5px; color:var(--muted); font-weight:600; letter-spacing:.5px; }
+  .summary tr:last-child td { border-bottom:none; }
+  .summary .idx { font-weight:600; }
+  .summary .idx small { color:var(--muted); font-weight:400; margin-left:6px; font-size:11px; }
+  .summary .mini { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12.5px; font-weight:600; }
+  .summary .mini.long { color:var(--long); background:rgba(226,75,74,.10); }
+  .summary .mini.short { color:var(--short); background:rgba(47,138,59,.10); }
+  .summary .mini.hold { color:var(--hold); background:#f0f0f2; }
+  .summary .trend { font-weight:600; }
+  .summary .trend.强 { color:#b06a00; }
+  .summary .trend.弱 { color:#5a6b8a; }
+  .summary .trend.中性 { color:var(--muted); }
+  .summary .num { font-variant-numeric:tabular-nums; }
+
+  @media (max-width:620px){
+    .grid, .grid.three { grid-template-columns:repeat(2,1fr); }
+    .indi-grid { grid-template-columns:1fr; }
+  }
+
+  /* 工具栏：刷新按钮 + 文件选择 */
+  .toolbar { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  #refreshBtn { font:inherit; font-size:14px; font-weight:600; color:var(--fg); background:#fff;
+    border:1px solid var(--line); border-radius:10px; padding:8px 18px; cursor:pointer; transition:background .15s; }
+  #refreshBtn:hover { background:#f5f5f7; }
+  #refreshBtn:disabled { opacity:.6; cursor:default; }
+  .filebtn { font-size:13px; color:var(--muted); border:1px dashed var(--line); border-radius:10px;
+    padding:8px 14px; cursor:pointer; display:inline-flex; align-items:center; user-select:none; }
+  .filebtn:hover { color:var(--fg); border-color:#c8c8ce; }
+  .filebtn input { display:none; }
+  .hint { font-size:12.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+<nav class="back-nav" style="max-width:860px;margin:24px auto 0;padding:0 24px;font-size:13px;"><a href="index.html" style="color:#86868b;text-decoration:none;">← 返回首页</a></nav>
+<header>
+  <h1>期货交易信号</h1>
+  <div class="meta" id="meta">加载中…</div>
+  <div class="toolbar">
+    <button id="refreshBtn" type="button">↻ 刷新数据</button>
+    <label class="filebtn">选择 signals.json<input type="file" id="fileInput" accept=".json,application/json"></label>
+    <span class="hint" id="srcHint"></span>
+  </div>
+</header>
+<main id="list"></main>
+<footer>
+  <p>数据源：新浪财经 实时行情 + 60 分钟 K 线（免费，延迟约 3–15 秒）。数据按需刷新；点击↻刷新按钮可重新拉取最新快照。</p>
+  <div class="disclaim">⚠️ 免责声明：以上内容基于公开行情与量化规则自动生成，仅供参考，<b>不构成投资建议</b>。期货杠杆高、风险大，任何决策须结合个人风险承受能力独立判断，必要时咨询持牌机构。过往表现不预示未来收益。</div>
+</footer>
+<script>
+// 先尝试取实时数据；本地双击(file://)或服务器未启动则回退到内嵌数据，保证页面始终可看
+var EMBEDDED = /*DATA_START*/{"updated_at": "2026-08-29 20:20:43", "source": "新浪财经 实时行情 + 60分钟K线（免费，延迟约 3-15 秒）", "period": "60分钟", "market_open": false, "signals": [{"name": "沪深300", "code": "sh000300", "period": "60分钟", "entry": 4609.18, "price": 4609.18, "prev_close": 4630.28, "trend": "弱趋势", "atr": 23.762, "atr_pct": 0.52, "atr_ratio": 0.833, "recommendation": "观望", "strength": "—", "score": 2.06, "long_score": 2.06, "short_score": 0.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 4613.83, "ma20": 4588.35, "ma50": 4628.79, "ma100": 4627.22, "rsi": 50.49, "macd_dif": 1.459, "macd_dea": -4.022, "macd_hist": 10.961, "boll_upper": 4651.58, "boll_mid": 4588.35, "boll_lower": 4525.13, "ma_dir": "向下", "ma_slope": -1.801, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向下"}, "boll_dir": "向下", "boll_slope": -1.801, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.119%）", "RSI=50.5 站上 50（动量偏多，强度 0.05）", "价格位于布林中轨之上（偏离 0.45%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.83）"]}, {"name": "中证1000", "code": "sh000852", "period": "60分钟", "entry": 7705.03, "price": 7705.03, "prev_close": 7732.95, "trend": "弱趋势", "atr": 68.538, "atr_pct": 0.89, "atr_ratio": 0.831, "recommendation": "观望", "strength": "—", "score": 2.28, "long_score": 2.28, "short_score": 0.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 7692.79, "ma20": 7592.48, "ma50": 7673.04, "ma100": 7505.89, "rsi": 56.63, "macd_dif": 33.003, "macd_dea": 12.58, "macd_hist": 40.846, "boll_upper": 7824.05, "boll_mid": 7592.48, "boll_lower": 7360.91, "ma_dir": "向下", "ma_slope": -2.356, "ma_dirs": {"10": "向下", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -2.356, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.265%）", "RSI=56.6 站上 50（动量偏多，强度 0.66）", "价格位于布林中轨之上（偏离 1.48%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.83）"]}, {"name": "创业板指", "code": "sz399006", "period": "60分钟", "entry": 3424.4, "price": 3424.4, "prev_close": 3473.36, "trend": "弱趋势", "atr": 40.148, "atr_pct": 1.17, "atr_ratio": 0.863, "recommendation": "观望", "strength": "—", "score": 2.0, "long_score": 2.0, "short_score": 0.28, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 3447.35, "ma20": 3428.2, "ma50": 3527.48, "ma100": 3490.52, "rsi": 43.53, "macd_dif": -17.785, "macd_dea": -23.181, "macd_hist": 10.792, "boll_upper": 3485.96, "boll_mid": 3428.2, "boll_lower": 3370.45, "ma_dir": "向下", "ma_slope": -5.363, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向下"}, "boll_dir": "向下", "boll_slope": -5.363, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.158%）", "ATR趋势环境：弱趋势（ATR比率 0.86）"]}, {"name": "上证指数", "code": "sh000001", "period": "60分钟", "entry": 3952.18, "price": 3952.18, "prev_close": 3956.57, "trend": "弱趋势", "atr": 16.964, "atr_pct": 0.43, "atr_ratio": 0.857, "recommendation": "观望", "strength": "—", "score": 2.29, "long_score": 2.29, "short_score": 0.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 3945.75, "ma20": 3917.25, "ma50": 3925.78, "ma100": 3895.64, "rsi": 61.34, "macd_dif": 13.011, "macd_dea": 7.503, "macd_hist": 11.016, "boll_upper": 3984.38, "boll_mid": 3917.25, "boll_lower": 3850.11, "ma_dir": "向下", "ma_slope": -0.616, "ma_dirs": {"10": "向上", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.616, "boll_width": "扩张"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.139%）", "RSI=61.3 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 0.89%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.86）"]}, {"name": "红利指数", "code": "sh000015", "period": "60分钟", "entry": 3372.0, "price": 3372.0, "prev_close": 3366.87, "trend": "中性", "atr": 18.891, "atr_pct": 0.56, "atr_ratio": 0.919, "recommendation": "做多", "strength": "中", "score": 2.46, "long_score": 2.46, "short_score": 1.27, "stop_loss": 3343.67, "take_profit": 3428.68, "risk_reward": 2.0, "indicators": {"ma10": 3360.93, "ma20": 3351.2, "ma50": 3289.72, "ma100": 3238.73, "rsi": 66.1, "macd_dif": 21.704, "macd_dea": 22.773, "macd_hist": -2.138, "boll_upper": 3381.69, "boll_mid": 3351.2, "boll_lower": 3320.71, "ma_dir": "向上", "ma_slope": 3.711, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 3.711, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "RSI=66.1 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 0.62%，偏多）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "科创50", "code": "sh000688", "period": "60分钟", "entry": 1662.15, "price": 1662.15, "prev_close": 1693.48, "trend": "弱趋势", "atr": 23.057, "atr_pct": 1.39, "atr_ratio": 0.875, "recommendation": "观望", "strength": "—", "score": 2.15, "long_score": 2.15, "short_score": 0.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 1672.36, "ma20": 1638.95, "ma50": 1683.44, "ma100": 1682.32, "rsi": 50.47, "macd_dif": 2.724, "macd_dea": -3.265, "macd_hist": 11.978, "boll_upper": 1714.47, "boll_mid": 1638.95, "boll_lower": 1563.44, "ma_dir": "向下", "ma_slope": -5.511, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向下"}, "boll_dir": "向下", "boll_slope": -5.511, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.360%）", "RSI=50.5 站上 50（动量偏多，强度 0.05）", "价格位于布林中轨之上（偏离 1.42%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.88）"]}]}/*DATA_END*/;
+// ----- 数据加载（手动刷新，平时零请求、零计算）-----
+function showData(d, src){
+  if(!d) return;
+  render(d);
+  document.getElementById('meta').textContent =
+    '更新时间 ' + d.updated_at + ' · 周期 ' + (d.period||'') + ' · 市场' +
+    (d.market_open ? '开盘中' : '已收盘') + ' · ' + d.source;
+  document.getElementById('srcHint').textContent = src || '';
+}
+function loadLive(){
+  return fetch('./signals-0829.json', {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+// 初始：先试实时，失败回退内嵌快照（保证双击也能看）
+loadLive().then(function(d){ showData(d, '● 实时数据'); })
+  .catch(function(){
+    if(location.protocol === 'file:'){
+      showData(EMBEDDED, '○ 内嵌快照（双击打开：刷新按钮无法联网，要看最新请点「选择 signals.json」）');
+    } else {
+      showData(EMBEDDED, '○ 内嵌快照（本地服务器未启动，已显示最近一次数据）');
+    }
+  });
+
+// 刷新按钮：点一下才拉一次，最省流量
+document.getElementById('refreshBtn').addEventListener('click', function(){
+  var btn = this;
+  btn.disabled = true; btn.textContent = '↻ 刷新中…';
+  loadLive().then(function(d){ showData(d, '● 实时数据'); })
+    .catch(function(){
+      // file:// 双击模式下浏览器禁止 fetch —— 回退内嵌快照，不再报红错
+      showData(EMBEDDED, '○ 内嵌快照（双击模式无法联网，已显示最近一次数据；要最新请点「选择 signals.json」）');
+    })
+    .then(function(){ btn.disabled = false; btn.textContent = '↻ 刷新数据'; });
+});
+
+// 文件选择：双击(file://)模式下也能手动加载最新 signals.json
+document.getElementById('fileInput').addEventListener('change', function(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    try { showData(JSON.parse(rd.result), '● 本地文件：' + f.name); }
+    catch(err){ document.getElementById('srcHint').textContent = '✗ 文件解析失败（不是合法 JSON）'; }
+  };
+  rd.readAsText(f);
+});
+function fmt(n){ return (n==null) ? '—' : (Math.round(n*100)/100); }
+
+function scaleHTML(markers){
+  var vals = markers.map(function(m){ return m.val; }).filter(function(v){ return v!=null; });
+  if(!vals.length) return '';
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var pad = (max-min)*0.18 || (Math.abs(max)*0.01 || 1);
+  min -= pad; max += pad;
+  var span = (max-min) || 1;
+  var parts = '<div class="scale"><div class="track"></div>';
+  markers.forEach(function(m){
+    if(m.val==null) return;
+    var p = (m.val-min)/span*100;
+    var dotColor = m.cls==='sl' ? 'var(--risk)' : (m.cls==='tp' ? 'var(--reward)' : (m.cls==='cur' ? 'var(--fg)' : 'var(--blue)'));
+    var tri = m.cls==='cur' ? ' px' : '';
+    parts += '<div class="mk '+m.cls+'" style="left:'+p.toFixed(1)+'%">' +
+      (tri ? '<div class="dot'+tri+'"></div>' : '<div class="dot" style="background:'+dotColor+'"></div>') +
+      '<div class="lab">'+m.label+'</div><div class="val">'+fmt(m.val)+(m.unit||'')+'</div></div>';
+  });
+  return parts + '</div>';
+}
+
+// points: [{label, val, kind}] 按数值从左到右（小->大）
+function alignHTML(points){
+  var vals = points.map(function(p){ return p.val; }).filter(function(v){ return v!=null; });
+  if(!vals.length) return '';
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var pad = (max-min)*0.14 || (Math.abs(max)*0.01 || 1);
+  min -= pad; max += pad;
+  var span = (max-min) || 1;
+  var parts = '<div class="align"><div class="ln"></div>';
+  points.forEach(function(p){
+    if(p.val==null) return;
+    var x = (p.val-min)/span*100;
+    parts += '<div class="pt '+(p.kind==='px'?'px':'')+'" style="left:'+x.toFixed(1)+'%" title="'+p.label+'"></div>';
+  });
+  parts += '</div><div class="cap" style="display:flex;justify-content:space-between">' +
+    '<span>'+points[0].label+'</span><span>'+points[points.length-1].label+'</span></div>';
+  return parts;
+}
+
+function gaugeHTML(v){
+  var p = Math.max(0, Math.min(100, v));
+  var zones = v>70 ? '超买' : (v<30 ? '超卖' : '中性');
+  return '<div class="gauge"><div class="ptr" style="left:'+p+'%"></div></div>' +
+    '<div class="zone"><span>超卖&lt;30</span><span>'+fmt(v)+' · '+zones+'</span><span>&gt;70 超买</span></div>';
+}
+
+function dirArrow(d){
+  if(d==='向上') return {sym:'↑', cls:'up'};
+  if(d==='向下') return {sym:'↓', cls:'down'};
+  return {sym:'→', cls:'flat'};
+}
+function dirHTML(d, lead, extra){
+  var a = dirArrow(d);
+  return '<div class="dirline"><span class="dir-arrow '+a.cls+'">'+a.sym+'</span>' +
+    '<span>'+lead+' <b>'+d+'</b></span>' +
+    (extra ? '<span class="muted">'+extra+'</span>' : '') + '</div>';
+}
+function chipHTML(name, d){
+  var a = dirArrow(d);
+  return '<span class="chip '+a.cls+'">'+name+' '+a.sym+'</span>';
+}
+
+function render(d){
+  document.getElementById('meta').textContent = '更新时间 ' + d.updated_at + ' · 周期 ' + (d.period||'') + ' · 市场' + (d.market_open ? '开盘中' : '已收盘') + ' · ' + d.source;
+  var list = document.getElementById('list');
+  list.innerHTML = '';
+
+  // ===== 顶部汇总表：各指数方向 / 趋势环境 / 多空评分 集中对比 =====
+  var rows = (d.signals || []).map(function(s){
+    var dir = s.recommendation==='做多' ? 'long' : (s.recommendation==='做空' ? 'short' : 'hold');
+    return '<tr>' +
+      '<td class="idx">'+s.name+'<small>'+s.code+'</small></td>' +
+      '<td><span class="mini '+dir+'">'+s.recommendation+' · '+s.strength+'</span></td>' +
+      '<td class="trend '+s.trend+'">'+s.trend+'</td>' +
+      '<td class="num">'+fmt(s.score)+'</td>' +
+      '<td class="num">多 '+fmt(s.long_score)+' / 空 '+fmt(s.short_score)+'</td>' +
+      '<td class="num">'+fmt(s.atr)+'</td>' +
+      '<td class="num">'+fmt(s.risk_reward)+'</td>' +
+    '</tr>';
+  }).join('');
+  var sum = document.createElement('div');
+  sum.className = 'card summary';
+  sum.innerHTML =
+    '<div class="panel-title">指数信号汇总 · 共 '+ (d.signals||[]).length +' 个</div>' +
+    '<div class="summary-wrap"><table>' +
+      '<thead><tr><th>指数</th><th>方向</th><th>趋势环境</th><th>综合评分</th><th>多 / 空评分</th><th>ATR</th><th>盈亏比</th></tr></thead>' +
+      '<tbody>'+rows+'</tbody>' +
+    '</table></div>';
+  list.appendChild(sum);
+
+  (d.signals || []).forEach(function(s){
+    var rec = s.recommendation, dir = rec==='做多'?'long':(rec==='做空'?'short':'hold');
+    var ind = s.indicators || {};
+    var strengthCls = s.strength==='强'?'strong':(s.strength==='弱'?'weak':'neutral');
+
+    // 开仓阶梯：现价 ≈ 开仓参考价（去重，只放现价；开仓参考价在下方数值网格）
+    var scaleMk = [
+      {label:'现价', val:s.price, cls:'cur'}
+    ];
+    if(s.stop_loss!=null) scaleMk.push({label:'止损', val:s.stop_loss, cls:'sl'});
+    if(s.take_profit!=null) scaleMk.push({label:'止盈', val:s.take_profit, cls:'tp'});
+    var scale = scaleHTML(scaleMk);
+    var slDist = (s.stop_loss!=null) ? fmt(Math.abs(s.stop_loss - s.entry)) : '—';
+    var tpDist = (s.take_profit!=null) ? fmt(Math.abs(s.take_profit - s.entry)) : '—';
+
+    // MACD 状态
+    var macdState = (ind.macd_hist>0) ? '金叉区' : '死叉区';
+    var macdTag = (ind.macd_hist>0) ? 'up':'down';
+
+    // 均线排列（快照：MA10>MA20>MA50 = 多；MA10<MA20<MA50 = 空；其他 = 乱）
+    //    方向（动量）：MA20 斜率正负。
+    //    两者矛盾时 = 排列背离，给橙色警告标签（避免"显示多头排列但所有 MA 都向下"的误导）
+    var maStruct = (ind.ma10!=null && ind.ma20!=null && ind.ma50!=null)
+      ? (ind.ma10>ind.ma20 && ind.ma20>ind.ma50 ? '多'
+        : ind.ma10<ind.ma20 && ind.ma20<ind.ma50 ? '空' : '乱')
+      : null;
+    var maAlign, maAlignCls;
+    if (maStruct==='多' && ind.ma_dir==='向下') {
+      maAlign = '排列背离↓'; maAlignCls = 'warn';
+    } else if (maStruct==='空' && ind.ma_dir==='向上') {
+      maAlign = '反弹未排列'; maAlignCls = 'warn';
+    } else if (maStruct==='多') {
+      maAlign = '多头排列'; maAlignCls = 'up';
+    } else if (maStruct==='空') {
+      maAlign = '空头排列'; maAlignCls = 'down';
+    } else {
+      maAlign = '—'; maAlignCls = 'flat';
+    }
+    var maDirTag = (ind.ma_dir==='向上')?'up':(ind.ma_dir==='向下'?'down':'flat');
+    var maPts = [
+      {label:'MA100', val:ind.ma100, kind:'ma'}, {label:'MA50', val:ind.ma50, kind:'ma'},
+      {label:'MA20', val:ind.ma20, kind:'ma'}, {label:'MA10', val:ind.ma10, kind:'ma'},
+      {label:'现价', val:s.price, kind:'px'}
+    ];
+
+    // 布林带 方向
+    var bollDirTag = (ind.boll_dir==='向上')?'up':(ind.boll_dir==='向下'?'down':'flat');
+    var bollPts = [
+      {label:'上轨', val:ind.boll_upper, kind:'ma'}, {label:'中轨', val:ind.boll_mid, kind:'ma'},
+      {label:'下轨', val:ind.boll_lower, kind:'ma'}, {label:'现价', val:s.price, kind:'px'}
+    ];
+
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML =
+      '<div class="top">' +
+        '<div><span class="name">'+s.name+'</span><span class="code">'+s.code+'</span></div>' +
+        '<div class="price">'+fmt(s.price)+'<small>最新</small></div>' +
+      '</div>' +
+      '<div class="badges">' +
+        '<span class="badge '+dir+'">'+rec+' · '+s.strength+'</span>' +
+        '<span class="pill '+strengthCls+'">趋势环境 '+s.trend+'</span>' +
+        '<span class="pill">综合评分 '+fmt(s.score)+'</span>' +
+        '<span class="pill">多 '+fmt(s.long_score)+' / 空 '+fmt(s.short_score)+'</span>' +
+      '</div>' +
+
+      // ===== 开仓信息 =====
+      '<div class="panel trade">' +
+        '<div class="panel-title">开仓信息</div>' +
+        scale +
+        '<div class="grid'+(s.stop_loss!=null?'':' three')+'">' +
+          '<div class="m hl"><div class="k">开仓参考价</div><div class="v">'+fmt(s.entry)+'</div></div>' +
+          (s.stop_loss!=null ? '<div class="m risk"><div class="k">止损价 · 距 '+slDist+'</div><div class="v">'+fmt(s.stop_loss)+'</div></div>' : '') +
+          (s.take_profit!=null ? '<div class="m reward"><div class="k">止盈价 · 距 '+tpDist+'</div><div class="v">'+fmt(s.take_profit)+'</div></div>' : '') +
+          '<div class="m"><div class="k">盈亏比</div><div class="v">'+fmt(s.risk_reward)+'</div></div>' +
+          '<div class="m"><div class="k">ATR（波动）</div><div class="v">'+fmt(s.atr)+'<small> '+fmt(s.atr_pct)+'%</small></div></div>' +
+          '<div class="m"><div class="k">ATR 比率</div><div class="v">'+fmt(s.atr_ratio)+'</div></div>' +
+          '<div class="m"><div class="k">昨收</div><div class="v">'+fmt(s.prev_close)+'</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      // ===== 指标信息 =====
+      '<div class="panel ind">' +
+        '<div class="panel-title">指标信息</div>' +
+        '<div class="indi-grid">' +
+          // 均线组
+          '<div class="sub"><h4>均线组 <span class="tag '+maAlignCls+'">'+maAlign+'</span></h4>' +
+            alignHTML(maPts) +
+            dirHTML(ind.ma_dir, '均线方向', 'MA20 斜率 '+fmt(ind.ma_slope)+'%/根') +
+            '<div class="ma-chips">' +
+              chipHTML('MA10', (ind.ma_dirs||{})['10']) +
+              chipHTML('MA20', (ind.ma_dirs||{})['20']) +
+              chipHTML('MA50', (ind.ma_dirs||{})['50']) +
+              chipHTML('MA100', (ind.ma_dirs||{})['100']) +
+            '</div>' +
+          '</div>' +
+          // BOLL
+          '<div class="sub"><h4>布林带 <span class="tag '+bollDirTag+'">'+ind.boll_dir+'</span></h4>' +
+            alignHTML(bollPts) +
+            dirHTML(ind.boll_dir, '布林带方向', '带宽 '+ind.boll_width) +
+            '<div class="kv"><span class="k">价格 / 中轨</span><span class="v">'+(s.price>ind.boll_mid?'上方':'下方')+'</span></div>' +
+          '</div>' +
+          // RSI
+          '<div class="sub"><h4>RSI（相对强弱）</h4>' +
+            gaugeHTML(ind.rsi) +
+            '<div class="kv" style="margin-top:6px"><span class="k">状态</span><span class="v">'+(ind.rsi>70?'超买':(ind.rsi<30?'超卖':'中性'))+'</span></div>' +
+          '</div>' +
+          // MACD
+          '<div class="sub"><h4>MACD <span class="tag '+macdTag+'">'+macdState+'</span></h4>' +
+            '<div class="kv"><span class="k">DIF</span><span class="v">'+fmt(ind.macd_dif)+'</span></div>' +
+            '<div class="kv"><span class="k">DEA</span><span class="v">'+fmt(ind.macd_dea)+'</span></div>' +
+            '<div class="kv"><span class="k">MACD 柱</span><span class="v" style="color:'+(ind.macd_hist>=0?'var(--red)':'var(--green)')+'">'+fmt(ind.macd_hist)+'</span></div>' +
+            '<div class="histbar" style="width:'+Math.min(100,Math.abs(ind.macd_hist)/Math.max(1,Math.abs(ind.macd_hist))*50)+'%;background:'+(ind.macd_hist>=0?'var(--red)':'var(--green)')+';margin-left:'+(ind.macd_hist>=0?'0':'auto')+'"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // ===== 理由 =====
+      (s.reasons.length ? '<ul class="reasons">' + s.reasons.map(function(r){ var c=r.indexOf('多头')>=0||r.indexOf('金叉')>=0||r.indexOf('超卖')>=0?'pos':(r.indexOf('空头')>=0||r.indexOf('死叉')>=0||r.indexOf('超买')>=0?'neg':''); return '<li class="'+c+'">'+r+'</li>'; }).join('') + '</ul>' : '');
+    list.appendChild(card);
+  });
+}
+</script>
+<script src="js/guard-0814b.js"></script>
+<script src="js/access-gate-0815.js"></script>
+</body>
+</html>
