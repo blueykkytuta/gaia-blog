@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>通达信行业信号 · Carrycore</title>
+<title>行业信号 · Carrycore</title>
 <style>
   :root {
     --fg:#1d1d1f; --muted:#86868b; --line:#e8e8ed; --bg:#fafafa; --card:#fff;
@@ -157,12 +157,31 @@
   .filebtn:hover { color:var(--fg); border-color:#c8c8ce; }
   .filebtn input { display:none; }
   .hint { font-size:12.5px; color:var(--muted); }
+
+  /* 筛选条（汇总表上方） */
+  .filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:4px 0 14px; font-size:13px; }
+  .filter-bar .group { display:flex; align-items:center; gap:6px; }
+  .filter-bar .group-label { color:var(--muted); font-size:12.5px; margin-right:2px; }
+  .filter-bar .chip { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); background:#fff; cursor:pointer; user-select:none; transition:all .12s;
+    color:var(--fg); }
+  .filter-bar .chip:hover { border-color:#c8c8ce; }
+  .filter-bar .chip input { margin:0; cursor:pointer; accent-color:var(--fg); }
+  .filter-bar .chip.on { background:#f5f5f7; border-color:#c8c8ce; }
+  .filter-bar .chip.off { color:#aab0b8; }
+  .filter-bar .filter-reset { font:inherit; font-size:12.5px; color:var(--muted); background:#fff;
+    border:1px solid var(--line); border-radius:999px; padding:5px 14px; cursor:pointer; margin-left:auto; }
+  .filter-bar .filter-reset:hover { color:var(--fg); border-color:#c8c8ce; }
+
+  /* 表格内多/空评分染色 */
+  .summary td.long-s { color:var(--long); }
+  .summary td.short-s { color:var(--short); }
 </style>
 </head>
 <body>
 <nav class="back-nav" style="max-width:860px;margin:24px auto 0;padding:0 24px;font-size:13px;"><a href="index.html" style="color:#86868b;text-decoration:none;">← 返回首页</a></nav>
 <header>
-  <h1>通达信行业信号</h1>
+  <h1>行业信号</h1>
   <div class="meta" id="meta">加载中…</div>
   <div class="toolbar">
     <button id="refreshBtn" type="button">↻ 刷新数据</button>
@@ -296,12 +315,16 @@ function render(d){
   // ===== 顶部汇总表：各指数方向 / 趋势环境 / 多空评分 集中对比 =====
   var rows = (d.signals || []).map(function(s){
     var dir = s.recommendation==='做多' ? 'long' : (s.recommendation==='做空' ? 'short' : 'hold');
-    return '<tr class="jump-row" data-code="'+s.code+'">' +
+    return '<tr class="jump-row" data-code="'+s.code+
+           '" data-rec="'+s.recommendation+
+           '" data-trend="'+s.trend+
+           '" data-strength="'+s.strength+'">' +
       '<td class="idx">'+s.name+'<small>'+s.code+'</small></td>' +
       '<td><span class="mini '+dir+'">'+s.recommendation+' · '+s.strength+'</span></td>' +
       '<td class="trend '+s.trend+'">'+s.trend+'</td>' +
       '<td class="num">'+fmt(s.score)+'</td>' +
-      '<td class="num">多 '+fmt(s.long_score)+' / 空 '+fmt(s.short_score)+'</td>' +
+      '<td class="num long-s">'+fmt(s.long_score)+'</td>' +
+      '<td class="num short-s">'+fmt(s.short_score)+'</td>' +
       '<td class="num">'+fmt(s.atr)+'</td>' +
       '<td class="num">'+fmt(s.risk_reward)+'</td>' +
     '</tr>';
@@ -309,9 +332,27 @@ function render(d){
   var sum = document.createElement('div');
   sum.className = 'card summary';
   sum.innerHTML =
-    '<div class="panel-title">指数信号汇总 · 共 '+ (d.signals||[]).length +' 个（点击行可跳转到下方对应行业）</div>' +
+    '<div class="panel-title">指数信号汇总 · <span id="summaryCount">显示 '+(d.signals||[]).length+' / '+(d.signals||[]).length+' 个</span>（点击行跳转，顶部筛选可隐藏）</div>' +
+    '<div class="filter-bar" id="filterBar">' +
+      '<div class="group"><span class="group-label">方向</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="做多" checked>做多</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="做空" checked>做空</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="观望" checked>观望</label>' +
+      '</div>' +
+      '<div class="group"><span class="group-label">趋势</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="强趋势" checked>强</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="中性" checked>中</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="弱趋势" checked>弱</label>' +
+      '</div>' +
+      '<div class="group"><span class="group-label">强度</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="strength" value="强" checked>强</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="strength" value="中" checked>中</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="strength" value="弱" checked>弱</label>' +
+      '</div>' +
+      '<button type="button" class="filter-reset" id="filterReset">全选</button>' +
+    '</div>' +
     '<div class="summary-wrap"><table>' +
-      '<thead><tr><th>指数</th><th>方向</th><th>趋势环境</th><th>综合评分</th><th>多 / 空评分</th><th>ATR</th><th>盈亏比</th></tr></thead>' +
+      '<thead><tr><th>指数</th><th>方向</th><th>趋势环境</th><th>综合评分</th><th>多评分</th><th>空评分</th><th>ATR</th><th>盈亏比</th></tr></thead>' +
       '<tbody>'+rows+'</tbody>' +
     '</table></div>';
   list.appendChild(sum);
@@ -382,8 +423,11 @@ function render(d){
     ];
 
     var card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card detail-card';
     card.id = 'card-' + s.code;
+    card.setAttribute('data-rec', s.recommendation);
+    card.setAttribute('data-trend', s.trend);
+    card.setAttribute('data-strength', s.strength);
     card.innerHTML =
       '<div class="top">' +
         '<div><span class="name">'+s.name+'</span><span class="code">'+s.code+'</span></div>' +
@@ -450,6 +494,48 @@ function render(d){
       // ===== 理由 =====
       (s.reasons.length ? '<ul class="reasons">' + s.reasons.map(function(r){ var c=r.indexOf('多头')>=0||r.indexOf('金叉')>=0||r.indexOf('超卖')>=0?'pos':(r.indexOf('空头')>=0||r.indexOf('死叉')>=0||r.indexOf('超买')>=0?'neg':''); return '<li class="'+c+'">'+r+'</li>'; }).join('') + '</ul>' : '');
     list.appendChild(card);
+  });
+
+  // ===== 筛选条：方向 / 趋势 / 强度 多选过滤 =====
+  function applyFilter(){
+    var recs = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="rec"]:checked'), function(i){return i.value;});
+    var trends = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="trend"]:checked'), function(i){return i.value;});
+    var strengths = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="strength"]:checked'), function(i){return i.value;});
+    // 汇总表行
+    var total = 0, shown = 0;
+    document.querySelectorAll('tr.jump-row').forEach(function(tr){
+      var v = recs.indexOf(tr.dataset.rec)>=0
+            && trends.indexOf(tr.dataset.trend)>=0
+            && (tr.dataset.strength==='—' || strengths.indexOf(tr.dataset.strength)>=0);
+      tr.style.display = v ? '' : 'none';
+      total++; if (v) shown++;
+    });
+    // 下方卡片
+    document.querySelectorAll('.detail-card').forEach(function(c){
+      var v = recs.indexOf(c.dataset.rec)>=0
+            && trends.indexOf(c.dataset.trend)>=0
+            && (c.dataset.strength==='—' || strengths.indexOf(c.dataset.strength)>=0);
+      c.style.display = v ? '' : 'none';
+    });
+    // 同步 chip 视觉状态
+    document.querySelectorAll('#filterBar .chip').forEach(function(c){
+      var cb = c.querySelector('input[type=checkbox]');
+      c.classList.toggle('on', cb && cb.checked);
+      c.classList.toggle('off', cb && !cb.checked);
+    });
+    // 顶部数量显示「显示 X / 56 个」
+    var sc = document.getElementById('summaryCount');
+    if (sc) sc.textContent = '显示 ' + shown + ' / ' + total + ' 个';
+  }
+  document.querySelectorAll('#filterBar input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', applyFilter);
+  });
+  document.getElementById('filterReset').addEventListener('click', function(){
+    document.querySelectorAll('#filterBar input[type=checkbox]').forEach(function(cb){cb.checked = true;});
+    applyFilter();
   });
 }
 </script>
