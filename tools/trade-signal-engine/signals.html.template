@@ -125,6 +125,10 @@
   .summary th, .summary td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
   .summary th { font-size:11.5px; color:var(--muted); font-weight:600; letter-spacing:.5px; }
   .summary tr:last-child td { border-bottom:none; }
+  .summary .jump-row { cursor:pointer; transition:background .12s; }
+  .summary .jump-row:hover { background:#f5f5f7; }
+  .summary .jump-row:hover .idx { color:var(--fg); }
+  .card.jump-flash { box-shadow:0 0 0 3px rgba(58,110,165,.35); transition:box-shadow .4s; }
   .summary .idx { font-weight:600; }
   .summary .idx small { color:var(--muted); font-weight:400; margin-left:6px; font-size:11px; }
   .summary .mini { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12.5px; font-weight:600; }
@@ -292,7 +296,7 @@ function render(d){
   // ===== 顶部汇总表：各指数方向 / 趋势环境 / 多空评分 集中对比 =====
   var rows = (d.signals || []).map(function(s){
     var dir = s.recommendation==='做多' ? 'long' : (s.recommendation==='做空' ? 'short' : 'hold');
-    return '<tr>' +
+    return '<tr class="jump-row" data-code="'+s.code+'">' +
       '<td class="idx">'+s.name+'<small>'+s.code+'</small></td>' +
       '<td><span class="mini '+dir+'">'+s.recommendation+' · '+s.strength+'</span></td>' +
       '<td class="trend '+s.trend+'">'+s.trend+'</td>' +
@@ -305,12 +309,25 @@ function render(d){
   var sum = document.createElement('div');
   sum.className = 'card summary';
   sum.innerHTML =
-    '<div class="panel-title">指数信号汇总 · 共 '+ (d.signals||[]).length +' 个</div>' +
+    '<div class="panel-title">指数信号汇总 · 共 '+ (d.signals||[]).length +' 个（点击行可跳转到下方对应行业）</div>' +
     '<div class="summary-wrap"><table>' +
       '<thead><tr><th>指数</th><th>方向</th><th>趋势环境</th><th>综合评分</th><th>多 / 空评分</th><th>ATR</th><th>盈亏比</th></tr></thead>' +
       '<tbody>'+rows+'</tbody>' +
     '</table></div>';
   list.appendChild(sum);
+  // 汇总表点击行 → 平滑滚动到对应行业卡片
+  var jumpTrs = sum.querySelectorAll('tr.jump-row');
+  Array.prototype.forEach.call(jumpTrs, function(tr){
+    tr.addEventListener('click', function(){
+      var el = document.getElementById('card-' + tr.getAttribute('data-code'));
+      if (el) {
+        el.scrollIntoView({behavior:'smooth', block:'start'});
+        // 高亮目标卡片提示已定位
+        el.classList.add('jump-flash');
+        setTimeout(function(){ el.classList.remove('jump-flash'); }, 1200);
+      }
+    });
+  });
 
   (d.signals || []).forEach(function(s){
     var rec = s.recommendation, dir = rec==='做多'?'long':(rec==='做空'?'short':'hold');
@@ -366,6 +383,7 @@ function render(d){
 
     var card = document.createElement('div');
     card.className = 'card';
+    card.id = 'card-' + s.code;
     card.innerHTML =
       '<div class="top">' +
         '<div><span class="name">'+s.name+'</span><span class="code">'+s.code+'</span></div>' +
