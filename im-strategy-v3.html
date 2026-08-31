@@ -55,10 +55,6 @@
   .m .k { font-size:11.5px; color:var(--muted); }
   .m .v { font-size:16.5px; font-weight:600; margin-top:2px; font-variant-numeric:tabular-nums; }
   .m .v small { font-size:12px; color:var(--muted); font-weight:400; }
-  .compare { display:flex; gap:12px; flex-wrap:wrap; margin-top:4px; }
-  .compare .c { flex:1 1 200px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
-  .compare .c .t { font-size:13px; color:var(--muted); }
-  .compare .c .n { font-size:20px; font-weight:600; margin-top:4px; font-variant-numeric:tabular-nums; }
   footer { max-width:860px; margin:0 auto; padding:0 24px 48px; color:var(--muted); font-size:12.5px; line-height:1.7; }
   .disclaim { background:#fff8ec; border:1px solid #f0d9a8; color:#9a6b00; border-radius:12px; padding:12px 16px; margin-top:22px; font-size:12.5px; }
   .note { color:var(--muted); font-size:12.5px; line-height:1.8; }
@@ -82,36 +78,16 @@
   
     <div class="grid">
       <div class="kpi"><div class="l">净盈亏（v3 含加仓）</div><div class="v pos">+93,082 元</div><div class="s">近 10 个交易日 · 10 笔</div></div>
-      <div class="kpi"><div class="l">对照：v2 全 1 手</div><div class="v pos">+41,269 元</div><div class="s">同窗口同选点，仅差手数</div></div>
-      <div class="kpi"><div class="l">交易 / 胜负</div><div class="v">10 笔 / 5 胜 5 负</div><div class="s">胜率 50%，与 v2 选点完全一致</div></div>
+      <div class="kpi"><div class="l">交易 / 胜负</div><div class="v">10 笔 / 5 胜 5 负</div><div class="s">胜率 50%</div></div>
       <div class="kpi"><div class="l">2 手加仓笔数</div><div class="v">4 / 10</div><div class="s">双重过滤同向：日线与 60 分 MA5/20 同向</div></div>
       <div class="kpi"><div class="l">最大回撤</div><div class="v dim">17,367 元（占峰值 18.7%）</div><div class="s">逐笔权益曲线 · 相对峰值</div></div>
       <div class="kpi"><div class="l">摩擦成本</div><div class="v dim">12,900 元</div><div class="s">手续费 + 滑点，随手数翻倍</div></div>
-    </div>
-    
-    <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-top:0">
-      <div class="kpi"><div class="l">最大单笔盈利</div><div class="v pos">+35,626 元</div><div class="s">08-27 11:15 平 · 2 手 ★</div></div>
-      <div class="kpi"><div class="l">最大单笔亏损</div><div class="v neg">-9,104 元</div><div class="s">窗口内最大亏损单</div></div>
       <div class="kpi"><div class="l">盈亏比（PF）</div><div class="v">4.37</div><div class="s">盈利总额 / 亏损总额</div></div>
     </div>
     
-
-  <!-- 阶段对照 -->
-  <h2>回测成绩 · 阶段对照</h2>
-  
-    <div class="card">
-      <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>阶段</th><th>窗口</th><th>笔数</th><th>胜率</th><th>净盈亏</th><th>最大回撤</th></tr></thead>
-        <tbody>
-          <tr><td>无过滤基准</td><td class="mono">12 交易日</td><td class="mono">22</td><td class="mono">54.5%</td><td class="mono pos">+62,755</td><td class="mono dim">13,941</td></tr>
-          <tr><td>v2（六重过滤，全 1 手）</td><td class="mono">12 交易日</td><td class="mono">15</td><td class="mono">53.3%</td><td class="mono pos">+61,778</td><td class="mono dim">13,941</td></tr>
-          <tr><td>v2（近 10 日）</td><td class="mono">10 交易日</td><td class="mono">10</td><td class="mono">50.0%</td><td class="mono pos">+41,269</td><td class="mono dim">17,367 元（占峰值 42.1%）</td></tr>
-          <tr class="hl-row"><td><b>v3（双重同向 2 手）</b></td><td class="mono">10 交易日</td><td class="mono">10（4 笔 2 手）</td><td class="mono">5 胜 5 负</td><td class="mono pos">+93,082</td><td class="mono dim">17,367 元（占峰值 18.7%）</td></tr>
-        </tbody>
-      </table>
-      </div>
-      <p class="note" style="margin-bottom:0;">前两行为 12 交易日对照窗口（10:10–14:20 参数，来自 trend_compare），后两行为本次近 10 日主窗口。</p>
+    <div class="grid" style="grid-template-columns:repeat(2,1fr);margin-top:0">
+      <div class="kpi"><div class="l">最大单笔盈利</div><div class="v pos">+35,626 元</div><div class="s">08-27 11:15 平 · 2 手 ★</div></div>
+      <div class="kpi"><div class="l">最大单笔亏损</div><div class="v neg">-9,104 元</div><div class="s">窗口内最大亏损单</div></div>
     </div>
     
 
@@ -175,7 +151,7 @@
       <li><div><b>开仓窗口</b><span class="d">　10:10 之前 / 14:20 之后 不开新仓（K 线时间 = 结束时间）</span></div></li>
       <li><div><b>不追高</b><span class="d">　偏离 MA20 超过 ±1.0% 不开</span></div></li>
       <li><div><b>单笔风险</b><span class="d">　|entry − sl| × 200 &gt; 15,000 元 → 放弃该笔</span></div></li>
-      <li><div><b>v3 加仓</b><span class="d">　通过全部过滤后，60 分钟 MA5/MA20 与日线同向且与信号一致 → 开 2 手；只改手数，点位与 v2 完全相同</span></div></li>
+      <li><div><b>v3 加仓</b><span class="d">　通过全部过滤后，60 分钟 MA5/MA20 与日线同向且与信号一致 → 开 2 手；只改手数，选点不变</span></div></li>
     </ul>
   </div>
 
@@ -190,18 +166,6 @@
       <span class="pill">单日最大开仓 6 次</span>
       <span class="pill">单笔单方向，不加仓摊平</span>
     </div>
-  </div>
-
-  <!-- 对照实验 -->
-  <h2>关键对照实验（可信度证据 · 12 交易日窗口）</h2>
-  <div class="card">
-    <div class="compare">
-      <div class="c"><div class="t">顺势日线方向（v2）</div><div class="n pos">+61,778</div></div>
-      <div class="c"><div class="t">不过滤（基准）</div><div class="n pos">+62,755</div></div>
-      <div class="c"><div class="t">逆日线方向（安慰剂）</div><div class="n pos">+26,932</div></div>
-      <div class="c"><div class="t">逆 60 分钟做反而</div><div class="n pos">+8,434</div></div>
-    </div>
-    <p class="note">10:10–14:20 窗口、12 交易日：不过滤 +62,755 ≈ 日线顺势 +61,778（过滤增益被 14:20 截尾抵消）；逆日线 +26,932 仍显著低于顺势（差约 3.5 万）→ 日线方向信息仍有效。逆 60 分钟做反而仅 +8,434 → 60 分钟方向<b style="color:var(--fg)">只作加仓依据，不作过滤依据</b>。时间止损细扫 8~18 根，12 根处于参数高原（非孤立尖峰）。</p>
   </div>
 
   <!-- 参数与风控 -->
@@ -230,9 +194,10 @@
   <h2>已知局限与口径备注</h2>
   <div class="card note">
     · 主窗口已扩至 10 个交易日（08-18 ~ 08-31），v3 共 10 笔（含 4 笔 2 手加仓）——样本仍有限且<b style="color:var(--fg)">全部为多单</b>，空头侧未验证；须先模拟盘攒够 50 笔再评估实盘。<br>
-    · v3.2（2026-08-31）：窗口 5 日 → 10 日；新增<b style="color:var(--fg)">最大回撤</b>指标；逐日明细与流水改<b style="color:var(--fg)">日期倒序</b>（最新在上）；建立增量结果数据库 <b class="mono">im_strategy_db.json</b>（按日期缓存 v3/v2 每日结果，参数指纹校验，刷新时只增量计算新日期）。<br>
-    · 窗口修订历史（v3.1，2026-08-31）：10:30→10:10 开仓、14:45→14:20 截尾后，5 日窗口 v3 由 7 笔 +85,592 → 6 笔 +89,387（08-26 14:30 那笔被 14:20 闸挡掉；08-27 提前到 10:10 开仓）；对照实验与 12 日成绩同步重算。<br>
-    · v3 近 5 日报告的口径修正：12 根时间止损优先于止盈止损判断，复现以修复后的回测为准；v2 的 12 日成绩（+61,778）含时间止损，与近 10 日口径不完全一致。<br>
+    · v3.2（2026-08-31）：窗口 5 日 → 10 日；新增<b style="color:var(--fg)">最大回撤</b>指标；逐日明细与流水改<b style="color:var(--fg)">日期倒序</b>（最新在上）；建立增量结果数据库 <b class="mono">im_strategy_db.json</b>（按日期缓存每日结果，参数指纹校验，刷新时只增量计算新日期）。<br>
+    · v3.3（2026-08-31）：移除 v2 及更早策略对照，页面与数据库只保留当前 v3 策略。<br>
+    · 窗口修订历史（v3.1，2026-08-31）：10:30→10:10 开仓、14:45→14:20 截尾后，5 日窗口 v3 由 7 笔 +85,592 → 6 笔 +89,387（08-26 14:30 那笔被 14:20 闸挡掉；08-27 提前到 10:10 开仓）。<br>
+    · v3 近 5 日报告的口径修正：12 根时间止损优先于止盈止损判断，复现以修复后的回测为准。<br>
     · 防未来函数三铁律：日线只用昨收盘前数据；60 分钟线只用结束时间 ≤ 信号时刻的 K 线；信号只用已收盘的 5 分钟 K 线。
   </div>
 
