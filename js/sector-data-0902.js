@@ -1,4 +1,6 @@
-{
+/* 自动生成文件 —— 由 tools/build-data.py 从 data/sector-db.json 生成，请勿手改 */
+/* 修改数据请编辑 data/sector-db.json 后重新运行生成脚本 */
+window.SECTOR_DB = {
   "meta": {
     "name": "行业强弱分布数据库",
     "description": "只存用户提供的精确底层数据（不再做图像识别录入）。原图留存于 data/reference/ 仅备查，不做识别。每个日期 31 个行业，字段：x=波动率, y=强弱水平, value=甜品度, color=红/蓝, cont=连续性（直接用于圆大小，线性绘制不做映射）。",
@@ -10544,4 +10546,4 @@
       }
     ]
   }
-}
+};
