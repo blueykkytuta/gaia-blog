@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交易信号 · Carrycore</title>
+<style>
+  :root {
+    --fg:#1d1d1f; --muted:#86868b; --line:#e8e8ed; --bg:#fafafa; --card:#fff;
+    --red:#e24b4a; --green:#2f8a3b; --blue:#3a6ea5;
+    --long:#e24b4a; --short:#2f8a3b; --hold:#86868b;
+    --risk:#e24b4a; --reward:#2f8a3b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--fg); background:var(--bg); line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased; }
+  header { max-width:860px; margin:0 auto; padding:44px 24px 6px; }
+  h1 { font-size:27px; font-weight:600; margin:0 0 6px; letter-spacing:-.3px; }
+  .meta { color:var(--muted); font-size:13.5px; }
+  main { max-width:860px; margin:0 auto; padding:18px 24px 72px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px 24px; margin:18px 0; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+
+  .top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; }
+  .name { font-size:21px; font-weight:600; }
+  .code { color:var(--muted); font-size:13px; margin-left:8px; font-weight:400; }
+  .price { font-size:26px; font-weight:600; letter-spacing:-.5px; }
+  .price small { font-size:14px; color:var(--muted); font-weight:400; margin-left:6px; }
+
+  .badges { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .badge { display:inline-block; padding:5px 14px; border-radius:999px; font-size:15px; font-weight:600; letter-spacing:.3px; }
+  .long { color:var(--long); background:rgba(226,75,74,.10); }
+  .short { color:var(--short); background:rgba(47,138,59,.10); }
+  .hold { color:var(--hold); background:#f0f0f2; }
+  .pill { font-size:12.5px; padding:3px 11px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:#fff; }
+  .pill.strong { color:#b06a00; border-color:#f0d9a8; background:#fff8ec; }
+  .pill.weak { color:#5a6b8a; border-color:#cfd9e8; background:#f3f7fc; }
+  .pill.neutral { color:#6b6b70; }
+
+  /* panel */
+  .panel { margin-top:18px; border-radius:14px; padding:16px 18px; }
+  .panel.trade { background:linear-gradient(180deg,#fcfcfd,#f7f8fa); border:1px solid var(--line); }
+  .panel.ind { background:#fff; border:1px solid var(--line); }
+  .panel-title { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:0 0 14px; }
+
+  /* price scale (开仓阶梯) */
+  .scale { position:relative; height:54px; margin:6px 4px 2px; }
+  .scale .track { position:absolute; top:24px; left:0; right:0; height:2px; background:var(--line); border-radius:2px; }
+  .mk { position:absolute; top:12px; transform:translateX(-50%); text-align:center; }
+  .mk .dot { width:11px; height:11px; border-radius:50%; border:2px solid #fff; margin:0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
+  .mk .lab { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; }
+  .mk .val { font-size:13px; font-weight:600; white-space:nowrap; }
+  .mk.cur .val { color:var(--fg); }
+  .mk.entry .val { color:var(--fg); }
+  .mk.sl .val { color:var(--risk); }
+  .mk.tp .val { color:var(--reward); }
+
+  /* metric grid */
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+  .grid.three { grid-template-columns:repeat(3,1fr); }
+  .m { background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
+  .m .k { font-size:11.5px; color:var(--muted); }
+  .m .v { font-size:17px; font-weight:600; margin-top:2px; }
+  .m .v small { font-size:12px; color:var(--muted); font-weight:400; }
+  .m.risk .v { color:var(--risk); }
+  .m.reward .v { color:var(--reward); }
+  .m.hl { background:#fbfcfe; }
+
+  /* 指标分组 */
+  .indi-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sub { border:1px solid var(--line); border-radius:12px; padding:14px 15px; background:#fff; }
+  .sub h4 { margin:0 0 10px; font-size:14px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .sub h4 .tag { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+  .tag.up { color:var(--long); background:rgba(226,75,74,.10); }
+  .tag.down { color:var(--short); background:rgba(47,138,59,.10); }
+  .tag.flat { color:var(--muted); background:#f0f0f2; }
+  .tag.warn { color:#a36a00; background:rgba(255,170,40,.14); }  /* 排列与方向背离：橙色警告 */
+
+  /* 对齐标尺（均线组 / 布林带 相对位置）*/
+  .align { position:relative; height:32px; margin:4px 2px 2px; }
+  .align .ln { position:absolute; top:14px; left:0; right:0; height:2px; background:var(--line); border-radius:2px; }
+  .align .pt { position:absolute; top:9px; transform:translateX(-50%); width:9px; height:9px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.10); background:var(--blue); }
+  .align .pt.px { width:0; height:0; border:none; box-shadow:none; top:6px; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--fg); }
+  .align .cap { font-size:11px; color:var(--muted); }
+
+  /* 方向 / 形态 */
+  .dirline { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14.5px; flex-wrap:wrap; }
+  .dir-arrow { font-size:21px; font-weight:700; line-height:1; }
+  .dir-arrow.up { color:var(--red); }
+  .dir-arrow.down { color:var(--green); }
+  .dir-arrow.flat { color:var(--muted); }
+  .dirline b { font-weight:600; }
+  .dirline .muted { color:var(--muted); font-size:13px; }
+  .ma-chips { display:flex; gap:7px; margin-top:9px; flex-wrap:wrap; }
+  .chip { font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
+  .chip.up { color:var(--red); border-color:rgba(226,75,74,.30); background:rgba(226,75,74,.05); }
+  .chip.down { color:var(--green); border-color:rgba(47,138,59,.30); background:rgba(47,138,59,.05); }
+  .chip.flat { color:var(--muted); }
+
+  /* RSI 量能条 */
+  .gauge { position:relative; height:14px; background:linear-gradient(90deg, rgba(47,138,59,.18) 0%, #f0f0f2 35%, #f0f0f2 65%, rgba(226,75,74,.18) 100%); border-radius:7px; margin:6px 0 4px; }
+  .gauge .ptr { position:absolute; top:-3px; width:3px; height:20px; background:var(--fg); border-radius:2px; transform:translateX(-50%); }
+  .gauge .zone { display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); }
+
+  /* MACD 行 */
+  .kv { display:flex; justify-content:space-between; font-size:13.5px; padding:3px 0; }
+  .kv .k { color:var(--muted); }
+  .kv .v { font-weight:600; }
+  .histbar { height:8px; border-radius:4px; margin-top:4px; }
+
+  /* reasons */
+  .reasons { margin:16px 0 0; padding:0; list-style:none; }
+  .reasons li { font-size:14px; color:#444; padding:8px 0 8px 20px; position:relative; border-top:1px solid #f1f1f3; line-height:1.7; overflow-wrap:anywhere; word-break:break-word; }
+  .reasons li:first-child { border-top:none; }
+  .reasons li::before { content:""; position:absolute; left:2px; top:15px; width:6px; height:6px; border-radius:50%; background:var(--muted); }
+  .reasons li.pos::before { background:var(--long); }
+  .reasons li.neg::before { background:var(--short); }
+
+  footer { max-width:860px; margin:0 auto; padding:0 24px 48px; color:var(--muted); font-size:12.5px; line-height:1.7; }
+  .disclaim { background:#fff8ec; border:1px solid #f0d9a8; color:#9a6b00; border-radius:12px; padding:12px 16px; margin-top:22px; font-size:12.5px; }
+
+  /* 顶部汇总表 */
+  .summary { margin:6px 0 20px; }
+  .summary .panel-title { margin-bottom:10px; }
+  .summary-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .summary table { width:100%; border-collapse:collapse; font-size:14px; }
+  .summary th, .summary td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .summary th { font-size:11.5px; color:var(--muted); font-weight:600; letter-spacing:.5px; }
+  .summary tr:last-child td { border-bottom:none; }
+  .summary .jump-row { cursor:pointer; transition:background .12s; }
+  .summary .jump-row:hover { background:#f5f5f7; }
+  .summary .jump-row:hover .idx { color:var(--fg); }
+  .card.jump-flash { box-shadow:0 0 0 3px rgba(58,110,165,.35); transition:box-shadow .4s; }
+  .summary .idx { font-weight:600; }
+  .summary .idx small { color:var(--muted); font-weight:400; margin-left:6px; font-size:11px; }
+  .summary .mini { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12.5px; font-weight:600; }
+  .summary .mini.long { color:var(--long); background:rgba(226,75,74,.10); }
+  .summary .mini.short { color:var(--short); background:rgba(47,138,59,.10); }
+  .summary .mini.hold { color:var(--hold); background:#f0f0f2; }
+  .summary .trend { font-weight:600; }
+  .summary .trend.强 { color:#b06a00; }
+  .summary .trend.弱 { color:#5a6b8a; }
+  .summary .trend.中性 { color:var(--muted); }
+  .summary .num { font-variant-numeric:tabular-nums; }
+
+  @media (max-width:620px){
+    .grid, .grid.three { grid-template-columns:repeat(2,1fr); }
+    .indi-grid { grid-template-columns:1fr; }
+  }
+
+  /* 工具栏：刷新按钮 + 文件选择 */
+  .toolbar { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  #refreshBtn { font:inherit; font-size:14px; font-weight:600; color:var(--fg); background:#fff;
+    border:1px solid var(--line); border-radius:10px; padding:8px 18px; cursor:pointer; transition:background .15s; }
+  #refreshBtn:hover { background:#f5f5f7; }
+  #refreshBtn:disabled { opacity:.6; cursor:default; }
+  .filebtn { font-size:13px; color:var(--muted); border:1px dashed var(--line); border-radius:10px;
+    padding:8px 14px; cursor:pointer; display:inline-flex; align-items:center; user-select:none; }
+  .filebtn:hover { color:var(--fg); border-color:#c8c8ce; }
+  .filebtn input { display:none; }
+  .hint { font-size:12.5px; color:var(--muted); }
+
+  /* 筛选条（汇总表上方） */
+  .filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:4px 0 14px; font-size:13px; }
+  .filter-bar .group { display:flex; align-items:center; gap:6px; }
+  .filter-bar .group-label { color:var(--muted); font-size:12.5px; margin-right:2px; }
+  .filter-bar .chip { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); background:#fff; cursor:pointer; user-select:none; transition:all .12s;
+    color:var(--fg); }
+  .filter-bar .chip:hover { border-color:#c8c8ce; }
+  .filter-bar .chip input { margin:0; cursor:pointer; accent-color:var(--fg); }
+  .filter-bar .chip.on { background:#f5f5f7; border-color:#c8c8ce; }
+  .filter-bar .chip.off { color:#aab0b8; }
+  .filter-bar .filter-reset { font:inherit; font-size:12.5px; color:var(--muted); background:#fff;
+    border:1px solid var(--line); border-radius:999px; padding:5px 14px; cursor:pointer; margin-left:auto; }
+  .filter-bar .filter-reset:hover { color:var(--fg); border-color:#c8c8ce; }
+
+  /* 表格内多/空评分染色 */
+  .summary td.long-s { color:var(--long); }
+  .summary td.short-s { color:var(--short); }
+</style>
+</head>
+<body>
+<nav class="back-nav" style="max-width:860px;margin:24px auto 0;padding:0 24px;font-size:13px;"><a href="index.html" style="color:#86868b;text-decoration:none;">← 返回首页</a></nav>
+<header>
+  <h1>期货交易信号</h1>
+  <div class="meta" id="meta">加载中…</div>
+  <div class="toolbar">
+    <button id="refreshBtn" type="button">↻ 刷新数据</button>
+    <label class="filebtn">选择 signals.json<input type="file" id="fileInput" accept=".json,application/json"></label>
+    <span class="hint" id="srcHint"></span>
+  </div>
+</header>
+<main id="list"></main>
+<footer>
+  <p>数据源：新浪财经 实时行情 + 60 分钟 K 线（免费，延迟约 3–15 秒）。数据按需刷新；点击↻刷新按钮可重新拉取最新快照。</p>
+  <div class="disclaim">⚠️ 免责声明：以上内容基于公开行情与量化规则自动生成，仅供参考，<b>不构成投资建议</b>。期货杠杆高、风险大，任何决策须结合个人风险承受能力独立判断，必要时咨询持牌机构。过往表现不预示未来收益。</div>
+</footer>
+<script>
+// 先尝试取实时数据；本地双击(file://)或服务器未启动则回退到内嵌数据，保证页面始终可看
+var EMBEDDED = /*DATA_START*/{"updated_at": "2026-09-08 22:41:45", "source": "通达信行情服务器 60分钟K线（免费）", "period": "60分钟", "market_open": false, "signals": [{"name": "银行", "code": "880471", "period": "60分钟", "entry": 3607.24, "price": 3607.24, "prev_close": 3604.54, "trend": "中性", "atr": 26.663, "atr_pct": 0.74, "atr_ratio": 0.956, "recommendation": "做空", "strength": "弱", "score": 2.19, "long_score": 0.0, "short_score": 2.19, "stop_loss": 3647.23, "take_profit": 3527.25, "risk_reward": 2.0, "indicators": {"ma10": 3612.2, "ma20": 3645.62, "ma50": 3604.39, "ma100": 3518.35, "rsi": 45.67, "macd_dif": -3.51, "macd_dea": 6.156, "macd_hist": -19.333, "boll_upper": 3723.95, "boll_mid": 3645.62, "boll_lower": 3567.29, "ma_dir": "向上", "ma_slope": 2.612, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 2.612, "boll_width": "扩张"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.268%）", "RSI=45.7 跌破 50（动量偏空，强度 0.43）", "价格位于布林中轨之下（偏离 1.05%，偏空）", "ATR趋势环境：中性（ATR比率 0.96）"]}, {"name": "煤炭", "code": "880301", "period": "60分钟", "entry": 1979.66, "price": 1979.66, "prev_close": 1969.22, "trend": "中性", "atr": 22.608, "atr_pct": 1.14, "atr_ratio": 0.887, "recommendation": "做空", "strength": "中", "score": 2.96, "long_score": 0.0, "short_score": 2.96, "stop_loss": 2013.57, "take_profit": 1911.84, "risk_reward": 2.0, "indicators": {"ma10": 1966.42, "ma20": 1993.39, "ma50": 2023.54, "ma100": 1972.34, "rsi": 43.8, "macd_dif": -18.563, "macd_dea": -17.625, "macd_hist": -1.877, "boll_upper": 2057.43, "boll_mid": 1993.39, "boll_lower": 1929.36, "ma_dir": "向下", "ma_slope": -1.798, "ma_dirs": {"10": "向下", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -1.798, "boll_width": "扩张"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "MACD 空头（DIF<DEA，柱体 0.047%）", "RSI=43.8 跌破 50（动量偏空，强度 0.62）", "价格位于布林中轨之下（偏离 0.69%，偏空）", "ATR趋势环境：中性（ATR比率 0.89）"]}, {"name": "石油", "code": "880310", "period": "60分钟", "entry": 1486.35, "price": 1486.35, "prev_close": 1473.66, "trend": "中性", "atr": 13.986, "atr_pct": 0.94, "atr_ratio": 1.001, "recommendation": "做多", "strength": "中", "score": 2.35, "long_score": 2.35, "short_score": 0.0, "stop_loss": 1465.37, "take_profit": 1528.31, "risk_reward": 2.0, "indicators": {"ma10": 1459.16, "ma20": 1462.65, "ma50": 1461.58, "ma100": 1432.37, "rsi": 61.96, "macd_dif": 2.728, "macd_dea": -0.281, "macd_hist": 6.016, "boll_upper": 1491.01, "boll_mid": 1462.65, "boll_lower": 1434.28, "ma_dir": "向上", "ma_slope": 0.768, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.768, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.202%）", "RSI=62.0 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.62%，偏多）", "ATR趋势环境：中性（ATR比率 1.00）"]}, {"name": "钢铁", "code": "880318", "period": "60分钟", "entry": 918.57, "price": 918.57, "prev_close": 918.86, "trend": "中性", "atr": 6.701, "atr_pct": 0.73, "atr_ratio": 1.011, "recommendation": "观望", "strength": "—", "score": 2.2, "long_score": 2.15, "short_score": 2.2, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 910.78, "ma20": 913.28, "ma50": 916.42, "ma100": 910.47, "rsi": 54.52, "macd_dif": -0.578, "macd_dea": -1.509, "macd_hist": 1.862, "boll_upper": 924.84, "boll_mid": 913.28, "boll_lower": 901.72, "ma_dir": "向下", "ma_slope": -0.479, "ma_dirs": {"10": "向下", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.479, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "ATR趋势环境：中性（ATR比率 1.01）"]}, {"name": "有色金属", "code": "880324", "period": "60分钟", "entry": 1751.81, "price": 1751.81, "prev_close": 1758.15, "trend": "弱趋势", "atr": 18.503, "atr_pct": 1.06, "atr_ratio": 0.834, "recommendation": "观望", "strength": "—", "score": 2.27, "long_score": 2.04, "short_score": 2.27, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 1742.02, "ma20": 1748.44, "ma50": 1773.38, "ma100": 1771.72, "rsi": 48.14, "macd_dif": -6.648, "macd_dea": -9.205, "macd_hist": 5.115, "boll_upper": 1777.18, "boll_mid": 1748.44, "boll_lower": 1719.71, "ma_dir": "向下", "ma_slope": -2.463, "ma_dirs": {"10": "向下", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -2.463, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "RSI=48.1 跌破 50（动量偏空，强度 0.19）", "ATR趋势环境：弱趋势（ATR比率 0.83）"]}, {"name": "化工", "code": "880335", "period": "60分钟", "entry": 2171.77, "price": 2171.77, "prev_close": 2170.14, "trend": "中性", "atr": 15.662, "atr_pct": 0.72, "atr_ratio": 0.933, "recommendation": "做多", "strength": "强", "score": 4.33, "long_score": 4.33, "short_score": 0.0, "stop_loss": 2148.28, "take_profit": 2218.76, "risk_reward": 2.0, "indicators": {"ma10": 2151.89, "ma20": 2151.5, "ma50": 2153.62, "ma100": 2160.15, "rsi": 57.33, "macd_dif": 1.304, "macd_dea": -2.33, "macd_hist": 7.269, "boll_upper": 2178.09, "boll_mid": 2151.5, "boll_lower": 2124.92, "ma_dir": "向上", "ma_slope": 0.331, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.331, "boll_width": "收窄"}, "reasons": ["MA10 上穿 MA20 金叉（看多）", "MACD 多头（DIF>DEA，柱体 0.167%）", "RSI=57.3 站上 50（动量偏多，强度 0.73）", "价格位于布林中轨之上（偏离 0.94%，偏多）", "ATR趋势环境：中性（ATR比率 0.93）"]}, {"name": "食品饮料", "code": "880372", "period": "60分钟", "entry": 2576.65, "price": 2576.65, "prev_close": 2579.17, "trend": "中性", "atr": 13.228, "atr_pct": 0.51, "atr_ratio": 0.945, "recommendation": "做多", "strength": "强", "score": 3.1, "long_score": 3.1, "short_score": 0.0, "stop_loss": 2556.81, "take_profit": 2616.33, "risk_reward": 2.0, "indicators": {"ma10": 2560.39, "ma20": 2538.63, "ma50": 2528.93, "ma100": 2540.33, "rsi": 66.89, "macd_dif": 14.336, "macd_dea": 9.084, "macd_hist": 10.505, "boll_upper": 2592.86, "boll_mid": 2538.63, "boll_lower": 2484.4, "ma_dir": "向上", "ma_slope": 0.659, "ma_dirs": {"10": "向上", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.659, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.204%）", "RSI=66.9 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.50%，偏多）", "ATR趋势环境：中性（ATR比率 0.94）"]}, {"name": "农林牧渔", "code": "880360", "period": "60分钟", "entry": 1754.64, "price": 1754.64, "prev_close": 1758.03, "trend": "中性", "atr": 15.612, "atr_pct": 0.89, "atr_ratio": 0.954, "recommendation": "做多", "strength": "强", "score": 3.35, "long_score": 3.35, "short_score": 0.13, "stop_loss": 1731.22, "take_profit": 1801.48, "risk_reward": 2.0, "indicators": {"ma10": 1740.66, "ma20": 1700.48, "ma50": 1653.25, "ma100": 1610.08, "rsi": 74.0, "macd_dif": 30.385, "macd_dea": 26.639, "macd_hist": 7.492, "boll_upper": 1792.71, "boll_mid": 1700.48, "boll_lower": 1608.26, "ma_dir": "向上", "ma_slope": 5.846, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 5.846, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.213%）", "价格位于布林中轨之上（偏离 3.18%，偏多）", "ATR趋势环境：中性（ATR比率 0.95）"]}, {"name": "医药", "code": "880400", "period": "60分钟", "entry": 2100.79, "price": 2100.79, "prev_close": 2103.85, "trend": "中性", "atr": 14.388, "atr_pct": 0.68, "atr_ratio": 0.921, "recommendation": "观望", "strength": "—", "score": 2.2, "long_score": 2.12, "short_score": 2.2, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 2084.96, "ma20": 2087.14, "ma50": 2103.38, "ma100": 2157.46, "rsi": 52.97, "macd_dif": -4.708, "macd_dea": -8.847, "macd_hist": 8.279, "boll_upper": 2105.33, "boll_mid": 2087.14, "boll_lower": 2068.96, "ma_dir": "向下", "ma_slope": -1.568, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向上"}, "boll_dir": "向下", "boll_slope": -1.568, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "房地产", "code": "880482", "period": "60分钟", "entry": 865.48, "price": 865.48, "prev_close": 865.62, "trend": "弱趋势", "atr": 7.914, "atr_pct": 0.91, "atr_ratio": 0.878, "recommendation": "观望", "strength": "—", "score": 3.1, "long_score": 3.1, "short_score": 0.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 856.32, "ma20": 850.9, "ma50": 845.66, "ma100": 845.44, "rsi": 61.75, "macd_dif": 5.337, "macd_dea": 3.394, "macd_hist": 3.886, "boll_upper": 872.62, "boll_mid": 850.9, "boll_lower": 829.18, "ma_dir": "向上", "ma_slope": 0.853, "ma_dirs": {"10": "向上", "20": "向上", "50": "走平", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.853, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.224%）", "RSI=61.7 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.71%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.88）"]}, {"name": "家用电器", "code": "880387", "period": "60分钟", "entry": 4570.8, "price": 4570.8, "prev_close": 4582.66, "trend": "中性", "atr": 20.621, "atr_pct": 0.45, "atr_ratio": 0.951, "recommendation": "做空", "strength": "弱", "score": 2.22, "long_score": 0.0, "short_score": 2.22, "stop_loss": 4601.73, "take_profit": 4508.94, "risk_reward": 2.0, "indicators": {"ma10": 4588.39, "ma20": 4600.57, "ma50": 4587.79, "ma100": 4565.75, "rsi": 42.03, "macd_dif": -5.064, "macd_dea": 1.306, "macd_hist": -12.74, "boll_upper": 4642.64, "boll_mid": 4600.57, "boll_lower": 4558.51, "ma_dir": "向上", "ma_slope": 0.656, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.656, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.139%）", "RSI=42.0 跌破 50（动量偏空，强度 0.80）", "价格位于布林中轨之下（偏离 0.65%，偏空）", "ATR趋势环境：中性（ATR比率 0.95）"]}, {"name": "酿酒", "code": "880380", "period": "60分钟", "entry": 4836.05, "price": 4836.05, "prev_close": 4836.83, "trend": "弱趋势", "atr": 25.707, "atr_pct": 0.53, "atr_ratio": 0.852, "recommendation": "观望", "strength": "—", "score": 2.28, "long_score": 2.28, "short_score": 2.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 4850.21, "ma20": 4829.37, "ma50": 4797.93, "ma100": 4837.46, "rsi": 53.14, "macd_dif": 13.907, "macd_dea": 16.907, "macd_hist": -6.0, "boll_upper": 4926.19, "boll_mid": 4829.37, "boll_lower": 4732.55, "ma_dir": "向上", "ma_slope": 1.141, "ma_dirs": {"10": "向上", "20": "向上", "50": "向下", "100": "向下"}, "boll_dir": "向上", "boll_slope": 1.141, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "RSI=53.1 站上 50（动量偏多，强度 0.31）", "价格位于布林中轨之上（偏离 0.14%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.85）"]}, {"name": "保险", "code": "880473", "period": "60分钟", "entry": 2500.75, "price": 2500.75, "prev_close": 2511.68, "trend": "中性", "atr": 21.528, "atr_pct": 0.86, "atr_ratio": 0.896, "recommendation": "做空", "strength": "中", "score": 2.31, "long_score": 0.0, "short_score": 2.31, "stop_loss": 2533.04, "take_profit": 2436.17, "risk_reward": 2.0, "indicators": {"ma10": 2521.98, "ma20": 2546.09, "ma50": 2499.75, "ma100": 2438.52, "rsi": 41.87, "macd_dif": 0.001, "macd_dea": 11.424, "macd_hist": -22.847, "boll_upper": 2619.58, "boll_mid": 2546.09, "boll_lower": 2472.61, "ma_dir": "向上", "ma_slope": 3.771, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 3.771, "boll_width": "扩张"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.457%）", "RSI=41.9 跌破 50（动量偏空，强度 0.81）", "价格位于布林中轨之下（偏离 1.78%，偏空）", "ATR趋势环境：中性（ATR比率 0.90）"]}, {"name": "造纸", "code": "880350", "period": "60分钟", "entry": 1293.84, "price": 1293.84, "prev_close": 1293.63, "trend": "中性", "atr": 9.015, "atr_pct": 0.7, "atr_ratio": 0.916, "recommendation": "做多", "strength": "强", "score": 3.05, "long_score": 3.05, "short_score": 0.0, "stop_loss": 1280.32, "take_profit": 1320.88, "risk_reward": 2.0, "indicators": {"ma10": 1284.94, "ma20": 1282.85, "ma50": 1278.42, "ma100": 1271.32, "rsi": 59.49, "macd_dif": 2.711, "macd_dea": 1.288, "macd_hist": 2.846, "boll_upper": 1297.81, "boll_mid": 1282.85, "boll_lower": 1267.9, "ma_dir": "向上", "ma_slope": 0.902, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.902, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.110%）", "RSI=59.5 站上 50（动量偏多，强度 0.95）", "价格位于布林中轨之上（偏离 0.86%，偏多）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "软件服务", "code": "880493", "period": "60分钟", "entry": 2367.3, "price": 2367.3, "prev_close": 2373.27, "trend": "中性", "atr": 21.918, "atr_pct": 0.93, "atr_ratio": 0.889, "recommendation": "做空", "strength": "弱", "score": 2.2, "long_score": 0.0, "short_score": 2.2, "stop_loss": 2400.18, "take_profit": 2301.55, "risk_reward": 2.0, "indicators": {"ma10": 2376.84, "ma20": 2388.59, "ma50": 2362.83, "ma100": 2406.69, "rsi": 44.68, "macd_dif": -2.433, "macd_dea": 2.146, "macd_hist": -9.159, "boll_upper": 2427.64, "boll_mid": 2388.59, "boll_lower": 2349.54, "ma_dir": "向上", "ma_slope": 2.726, "ma_dirs": {"10": "向上", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 2.726, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.193%）", "RSI=44.7 跌破 50（动量偏空，强度 0.53）", "价格位于布林中轨之下（偏离 0.89%，偏空）", "ATR趋势环境：中性（ATR比率 0.89）"]}, {"name": "矿物制品", "code": "880351", "period": "60分钟", "entry": 2540.1, "price": 2540.1, "prev_close": 2541.42, "trend": "中性", "atr": 34.382, "atr_pct": 1.35, "atr_ratio": 0.928, "recommendation": "做多", "strength": "中", "score": 2.94, "long_score": 2.94, "short_score": 0.0, "stop_loss": 2488.53, "take_profit": 2643.25, "risk_reward": 2.0, "indicators": {"ma10": 2537.52, "ma20": 2523.26, "ma50": 2513.99, "ma100": 2497.32, "rsi": 52.39, "macd_dif": 7.203, "macd_dea": 4.495, "macd_hist": 5.417, "boll_upper": 2580.72, "boll_mid": 2523.26, "boll_lower": 2465.79, "ma_dir": "向上", "ma_slope": 1.063, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.063, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.107%）", "RSI=52.4 站上 50（动量偏多，强度 0.24）", "价格位于布林中轨之上（偏离 0.67%，偏多）", "ATR趋势环境：中性（ATR比率 0.93）"]}, {"name": "电器仪表", "code": "880448", "period": "60分钟", "entry": 5337.89, "price": 5337.89, "prev_close": 5340.95, "trend": "中性", "atr": 49.633, "atr_pct": 0.93, "atr_ratio": 0.913, "recommendation": "做空", "strength": "强", "score": 3.07, "long_score": 0.0, "short_score": 3.07, "stop_loss": 5412.34, "take_profit": 5188.99, "risk_reward": 2.0, "indicators": {"ma10": 5349.37, "ma20": 5346.63, "ma50": 5350.42, "ma100": 5375.15, "rsi": 47.14, "macd_dif": -4.351, "macd_dea": -4.306, "macd_hist": -0.09, "boll_upper": 5400.9, "boll_mid": 5346.63, "boll_lower": 5292.37, "ma_dir": "向上", "ma_slope": 0.156, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.156, "boll_width": "收窄"}, "reasons": ["MACD 死叉（DIF 下穿 DEA，看空）", "RSI=47.1 跌破 50（动量偏空，强度 0.29）", "价格位于布林中轨之下（偏离 0.16%，偏空）", "ATR趋势环境：中性（ATR比率 0.91）"]}, {"name": "化纤", "code": "880330", "period": "60分钟", "entry": 2666.87, "price": 2666.87, "prev_close": 2652.76, "trend": "中性", "atr": 32.729, "atr_pct": 1.23, "atr_ratio": 0.901, "recommendation": "做空", "strength": "弱", "score": 2.05, "long_score": 0.0, "short_score": 2.05, "stop_loss": 2715.96, "take_profit": 2568.68, "risk_reward": 2.0, "indicators": {"ma10": 2640.68, "ma20": 2675.34, "ma50": 2667.82, "ma100": 2616.7, "rsi": 49.05, "macd_dif": -11.748, "macd_dea": -8.883, "macd_hist": -5.73, "boll_upper": 2757.05, "boll_mid": 2675.34, "boll_lower": 2593.64, "ma_dir": "向上", "ma_slope": 1.82, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.82, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.107%）", "RSI=49.0 跌破 50（动量偏空，强度 0.10）", "价格位于布林中轨之下（偏离 0.32%，偏空）", "ATR趋势环境：中性（ATR比率 0.90）"]}, {"name": "旅游", "code": "880424", "period": "60分钟", "entry": 5894.31, "price": 5894.31, "prev_close": 5872.81, "trend": "中性", "atr": 60.172, "atr_pct": 1.02, "atr_ratio": 1.014, "recommendation": "做多", "strength": "强", "score": 3.35, "long_score": 3.35, "short_score": 0.23, "stop_loss": 5804.05, "take_profit": 6074.83, "risk_reward": 2.0, "indicators": {"ma10": 5838.6, "ma20": 5766.6, "ma50": 5557.48, "ma100": 5398.44, "rsi": 76.8, "macd_dif": 95.229, "macd_dea": 92.227, "macd_hist": 6.003, "boll_upper": 5940.09, "boll_mid": 5766.6, "boll_lower": 5593.12, "ma_dir": "向上", "ma_slope": 7.298, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 7.298, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.051%）", "价格位于布林中轨之上（偏离 2.21%，偏多）", "ATR趋势环境：中性（ATR比率 1.01）"]}, {"name": "文教休闲", "code": "880422", "period": "60分钟", "entry": 1279.16, "price": 1279.16, "prev_close": 1280.83, "trend": "中性", "atr": 9.369, "atr_pct": 0.73, "atr_ratio": 0.958, "recommendation": "做多", "strength": "强", "score": 3.08, "long_score": 3.08, "short_score": 0.0, "stop_loss": 1265.11, "take_profit": 1307.27, "risk_reward": 2.0, "indicators": {"ma10": 1269.4, "ma20": 1264.45, "ma50": 1248.4, "ma100": 1246.92, "rsi": 64.17, "macd_dif": 7.822, "macd_dea": 6.448, "macd_hist": 2.748, "boll_upper": 1283.87, "boll_mid": 1264.45, "boll_lower": 1245.03, "ma_dir": "向上", "ma_slope": 2.689, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 2.689, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.107%）", "RSI=64.2 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.16%，偏多）", "ATR趋势环境：中性（ATR比率 0.96）"]}, {"name": "广告包装", "code": "880421", "period": "60分钟", "entry": 1520.43, "price": 1520.43, "prev_close": 1520.98, "trend": "中性", "atr": 12.932, "atr_pct": 0.85, "atr_ratio": 0.948, "recommendation": "做多", "strength": "强", "score": 3.07, "long_score": 3.07, "short_score": 0.0, "stop_loss": 1501.03, "take_profit": 1559.23, "risk_reward": 2.0, "indicators": {"ma10": 1511.95, "ma20": 1505.38, "ma50": 1483.06, "ma100": 1498.13, "rsi": 60.52, "macd_dif": 9.163, "macd_dea": 8.382, "macd_hist": 1.562, "boll_upper": 1534.02, "boll_mid": 1505.38, "boll_lower": 1476.73, "ma_dir": "向上", "ma_slope": 3.239, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 3.239, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.051%）", "RSI=60.5 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.00%，偏多）", "ATR趋势环境：中性（ATR比率 0.95）"]}, {"name": "船舶", "code": "880431", "period": "60分钟", "entry": 1024.5, "price": 1024.5, "prev_close": 1025.4, "trend": "中性", "atr": 11.545, "atr_pct": 1.13, "atr_ratio": 1.052, "recommendation": "做多", "strength": "强", "score": 3.35, "long_score": 3.35, "short_score": 0.31, "stop_loss": 1007.18, "take_profit": 1059.13, "risk_reward": 2.0, "indicators": {"ma10": 1014.66, "ma20": 982.64, "ma50": 948.72, "ma100": 934.42, "rsi": 79.33, "macd_dif": 24.745, "macd_dea": 21.371, "macd_hist": 6.747, "boll_upper": 1055.9, "boll_mid": 982.64, "boll_lower": 909.37, "ma_dir": "向上", "ma_slope": 6.172, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 6.172, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.329%）", "价格位于布林中轨之上（偏离 4.26%，偏多）", "ATR趋势环境：中性（ATR比率 1.05）"]}, {"name": "建材", "code": "880344", "period": "60分钟", "entry": 1685.57, "price": 1685.57, "prev_close": 1692.2, "trend": "中性", "atr": 19.442, "atr_pct": 1.15, "atr_ratio": 0.901, "recommendation": "观望", "strength": "—", "score": 2.32, "long_score": 2.0, "short_score": 2.32, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 1683.94, "ma20": 1690.7, "ma50": 1699.77, "ma100": 1736.17, "rsi": 45.52, "macd_dif": -6.949, "macd_dea": -8.519, "macd_hist": 3.141, "boll_upper": 1727.15, "boll_mid": 1690.7, "boll_lower": 1654.25, "ma_dir": "向下", "ma_slope": -0.318, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.318, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "RSI=45.5 跌破 50（动量偏空，强度 0.45）", "价格位于布林中轨之下（偏离 0.30%，偏空）", "ATR趋势环境：中性（ATR比率 0.90）"]}, {"name": "汽车类", "code": "880390", "period": "60分钟", "entry": 2259.08, "price": 2259.08, "prev_close": 2261.13, "trend": "中性", "atr": 13.167, "atr_pct": 0.58, "atr_ratio": 0.911, "recommendation": "做空", "strength": "弱", "score": 2.07, "long_score": 0.0, "short_score": 2.07, "stop_loss": 2278.83, "take_profit": 2219.58, "risk_reward": 2.0, "indicators": {"ma10": 2260.15, "ma20": 2264.14, "ma50": 2258.97, "ma100": 2271.53, "rsi": 47.4, "macd_dif": -1.199, "macd_dea": -0.024, "macd_hist": -2.351, "boll_upper": 2279.54, "boll_mid": 2264.14, "boll_lower": 2248.74, "ma_dir": "向上", "ma_slope": 0.564, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.564, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.052%）", "RSI=47.4 跌破 50（动量偏空，强度 0.26）", "价格位于布林中轨之下（偏离 0.22%，偏空）", "ATR趋势环境：中性（ATR比率 0.91）"]}, {"name": "电力", "code": "880305", "period": "60分钟", "entry": 2329.03, "price": 2329.03, "prev_close": 2325.47, "trend": "中性", "atr": 11.499, "atr_pct": 0.49, "atr_ratio": 1.019, "recommendation": "做空", "strength": "弱", "score": 2.03, "long_score": 0.0, "short_score": 2.03, "stop_loss": 2346.28, "take_profit": 2294.53, "risk_reward": 2.0, "indicators": {"ma10": 2320.87, "ma20": 2334.93, "ma50": 2328.03, "ma100": 2337.23, "rsi": 49.54, "macd_dif": -2.998, "macd_dea": -1.748, "macd_hist": -2.499, "boll_upper": 2366.79, "boll_mid": 2334.93, "boll_lower": 2303.06, "ma_dir": "向上", "ma_slope": 0.531, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向下"}, "boll_dir": "向上", "boll_slope": 0.531, "boll_width": "扩张"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.054%）", "RSI=49.5 跌破 50（动量偏空，强度 0.05）", "价格位于布林中轨之下（偏离 0.25%，偏空）", "ATR趋势环境：中性（ATR比率 1.02）"]}, {"name": "交通设施", "code": "880465", "period": "60分钟", "entry": 1840.01, "price": 1840.01, "prev_close": 1844.73, "trend": "中性", "atr": 10.601, "atr_pct": 0.58, "atr_ratio": 0.986, "recommendation": "做空", "strength": "弱", "score": 2.07, "long_score": 0.0, "short_score": 2.07, "stop_loss": 1855.91, "take_profit": 1808.21, "risk_reward": 2.0, "indicators": {"ma10": 1843.0, "ma20": 1847.91, "ma50": 1833.02, "ma100": 1813.57, "rsi": 48.49, "macd_dif": 1.614, "macd_dea": 4.085, "macd_hist": -4.942, "boll_upper": 1862.72, "boll_mid": 1847.91, "boll_lower": 1833.1, "ma_dir": "向上", "ma_slope": 1.699, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.699, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.134%）", "RSI=48.5 跌破 50（动量偏空，强度 0.15）", "价格位于布林中轨之下（偏离 0.43%，偏空）", "ATR趋势环境：中性（ATR比率 0.99）"]}, {"name": "医疗保健", "code": "880398", "period": "60分钟", "entry": 2851.48, "price": 2851.48, "prev_close": 2851.63, "trend": "中性", "atr": 17.149, "atr_pct": 0.6, "atr_ratio": 0.961, "recommendation": "观望", "strength": "—", "score": 2.2, "long_score": 2.17, "short_score": 2.2, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 2833.44, "ma20": 2834.64, "ma50": 2843.01, "ma100": 2860.55, "rsi": 55.61, "macd_dif": -1.393, "macd_dea": -4.456, "macd_hist": 6.126, "boll_upper": 2858.06, "boll_mid": 2834.64, "boll_lower": 2811.22, "ma_dir": "向下", "ma_slope": -0.522, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.522, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "ATR趋势环境：中性（ATR比率 0.96）"]}, {"name": "日用化工", "code": "880355", "period": "60分钟", "entry": 1159.33, "price": 1159.33, "prev_close": 1157.13, "trend": "中性", "atr": 8.811, "atr_pct": 0.76, "atr_ratio": 0.894, "recommendation": "做多", "strength": "中", "score": 2.44, "long_score": 2.44, "short_score": 0.65, "stop_loss": 1146.11, "take_profit": 1185.76, "risk_reward": 2.0, "indicators": {"ma10": 1151.42, "ma20": 1145.58, "ma50": 1116.62, "ma100": 1101.23, "rsi": 71.71, "macd_dif": 11.389, "macd_dea": 11.56, "macd_hist": -0.342, "boll_upper": 1163.68, "boll_mid": 1145.58, "boll_lower": 1127.49, "ma_dir": "向上", "ma_slope": 4.712, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 4.712, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "价格位于布林中轨之上（偏离 1.20%，偏多）", "ATR趋势环境：中性（ATR比率 0.89）"]}, {"name": "电气设备", "code": "880446", "period": "60分钟", "entry": 1821.37, "price": 1821.37, "prev_close": 1824.02, "trend": "中性", "atr": 13.587, "atr_pct": 0.75, "atr_ratio": 0.9, "recommendation": "做空", "strength": "中", "score": 2.49, "long_score": 1.37, "short_score": 2.49, "stop_loss": 1841.75, "take_profit": 1780.61, "risk_reward": 2.0, "indicators": {"ma10": 1831.7, "ma20": 1837.2, "ma50": 1877.38, "ma100": 1930.53, "rsi": 33.52, "macd_dif": -14.853, "macd_dea": -15.476, "macd_hist": 1.245, "boll_upper": 1857.78, "boll_mid": 1837.2, "boll_lower": 1816.63, "ma_dir": "向下", "ma_slope": -4.101, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向下"}, "boll_dir": "向下", "boll_slope": -4.101, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "RSI=33.5 跌破 50（动量偏空，强度 1.00）", "价格位于布林中轨之下（偏离 0.86%，偏空）", "ATR趋势环境：中性（ATR比率 0.90）"]}, {"name": "传媒娱乐", "code": "880418", "period": "60分钟", "entry": 1080.35, "price": 1080.35, "prev_close": 1081.29, "trend": "中性", "atr": 11.09, "atr_pct": 1.03, "atr_ratio": 0.975, "recommendation": "做多", "strength": "强", "score": 3.35, "long_score": 3.35, "short_score": 0.04, "stop_loss": 1063.72, "take_profit": 1113.62, "risk_reward": 2.0, "indicators": {"ma10": 1064.34, "ma20": 1046.23, "ma50": 1009.01, "ma100": 1005.54, "rsi": 71.24, "macd_dif": 19.818, "macd_dea": 17.127, "macd_hist": 5.381, "boll_upper": 1093.69, "boll_mid": 1046.23, "boll_lower": 998.76, "ma_dir": "向上", "ma_slope": 8.015, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 8.015, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.249%）", "价格位于布林中轨之上（偏离 3.26%，偏多）", "ATR趋势环境：中性（ATR比率 0.98）"]}, {"name": "工程机械", "code": "880447", "period": "60分钟", "entry": 1333.24, "price": 1333.24, "prev_close": 1335.31, "trend": "中性", "atr": 8.356, "atr_pct": 0.63, "atr_ratio": 0.919, "recommendation": "做多", "strength": "中", "score": 2.97, "long_score": 2.97, "short_score": 0.0, "stop_loss": 1320.71, "take_profit": 1358.31, "risk_reward": 2.0, "indicators": {"ma10": 1329.47, "ma20": 1326.48, "ma50": 1325.24, "ma100": 1333.7, "rsi": 55.08, "macd_dif": 2.079, "macd_dea": 1.011, "macd_hist": 2.137, "boll_upper": 1338.47, "boll_mid": 1326.48, "boll_lower": 1314.49, "ma_dir": "向上", "ma_slope": 0.513, "ma_dirs": {"10": "向上", "20": "向上", "50": "向下", "100": "向下"}, "boll_dir": "向上", "boll_slope": 0.513, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.080%）", "RSI=55.1 站上 50（动量偏多，强度 0.51）", "价格位于布林中轨之上（偏离 0.51%，偏多）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "商贸代理", "code": "880414", "period": "60分钟", "entry": 911.8, "price": 911.8, "prev_close": 911.71, "trend": "弱趋势", "atr": 7.753, "atr_pct": 0.85, "atr_ratio": 0.867, "recommendation": "观望", "strength": "—", "score": 2.29, "long_score": 2.29, "short_score": 0.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 904.29, "ma20": 901.22, "ma50": 902.49, "ma100": 903.08, "rsi": 58.64, "macd_dif": 1.855, "macd_dea": 0.19, "macd_hist": 3.331, "boll_upper": 914.2, "boll_mid": 901.22, "boll_lower": 888.24, "ma_dir": "向下", "ma_slope": -0.113, "ma_dirs": {"10": "向下", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.113, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.183%）", "RSI=58.6 站上 50（动量偏多，强度 0.86）", "价格位于布林中轨之上（偏离 1.17%，偏多）", "ATR趋势环境：弱趋势（ATR比率 0.87）"]}, {"name": "证券", "code": "880472", "period": "60分钟", "entry": 1565.14, "price": 1565.14, "prev_close": 1570.27, "trend": "中性", "atr": 10.769, "atr_pct": 0.69, "atr_ratio": 0.888, "recommendation": "做空", "strength": "中", "score": 2.31, "long_score": 0.0, "short_score": 2.31, "stop_loss": 1581.29, "take_profit": 1532.83, "risk_reward": 2.0, "indicators": {"ma10": 1575.35, "ma20": 1583.23, "ma50": 1576.19, "ma100": 1570.22, "rsi": 39.23, "macd_dif": -3.778, "macd_dea": -0.102, "macd_hist": -7.354, "boll_upper": 1609.33, "boll_mid": 1583.23, "boll_lower": 1557.14, "ma_dir": "向上", "ma_slope": 1.126, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.126, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.235%）", "RSI=39.2 跌破 50（动量偏空，强度 1.00）", "价格位于布林中轨之下（偏离 1.14%，偏空）", "ATR趋势环境：中性（ATR比率 0.89）"]}, {"name": "家居用品", "code": "880399", "period": "60分钟", "entry": 2312.16, "price": 2312.16, "prev_close": 2316.39, "trend": "中性", "atr": 13.342, "atr_pct": 0.58, "atr_ratio": 0.892, "recommendation": "做空", "strength": "弱", "score": 2.0, "long_score": 0.11, "short_score": 2.0, "stop_loss": 2332.17, "take_profit": 2272.14, "risk_reward": 2.0, "indicators": {"ma10": 2309.82, "ma20": 2312.65, "ma50": 2293.22, "ma100": 2275.26, "rsi": 52.7, "macd_dif": 3.596, "macd_dea": 4.974, "macd_hist": -2.755, "boll_upper": 2326.93, "boll_mid": 2312.65, "boll_lower": 2298.38, "ma_dir": "向上", "ma_slope": 2.067, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 2.067, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.060%）", "价格位于布林中轨之下（偏离 0.02%，偏空）", "ATR趋势环境：中性（ATR比率 0.89）"]}, {"name": "综合类", "code": "880497", "period": "60分钟", "entry": 1654.85, "price": 1654.85, "prev_close": 1662.2, "trend": "中性", "atr": 16.728, "atr_pct": 1.01, "atr_ratio": 0.909, "recommendation": "做多", "strength": "弱", "score": 2.24, "long_score": 2.24, "short_score": 0.0, "stop_loss": 1629.76, "take_profit": 1705.03, "risk_reward": 2.0, "indicators": {"ma10": 1642.34, "ma20": 1633.05, "ma50": 1642.48, "ma100": 1670.31, "rsi": 55.47, "macd_dif": 3.073, "macd_dea": -2.033, "macd_hist": 10.212, "boll_upper": 1669.6, "boll_mid": 1633.05, "boll_lower": 1596.5, "ma_dir": "向下", "ma_slope": -0.808, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.808, "boll_width": "扩张"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.309%）", "RSI=55.5 站上 50（动量偏多，强度 0.55）", "价格位于布林中轨之上（偏离 1.34%，偏多）", "ATR趋势环境：中性（ATR比率 0.91）"]}, {"name": "商业连锁", "code": "880406", "period": "60分钟", "entry": 753.44, "price": 753.44, "prev_close": 752.85, "trend": "中性", "atr": 5.258, "atr_pct": 0.7, "atr_ratio": 0.954, "recommendation": "做多", "strength": "强", "score": 3.35, "long_score": 3.35, "short_score": 0.15, "stop_loss": 745.55, "take_profit": 769.22, "risk_reward": 2.0, "indicators": {"ma10": 747.51, "ma20": 739.77, "ma50": 725.56, "ma100": 720.12, "rsi": 74.57, "macd_dif": 7.74, "macd_dea": 6.775, "macd_hist": 1.929, "boll_upper": 757.94, "boll_mid": 739.77, "boll_lower": 721.6, "ma_dir": "向上", "ma_slope": 3.752, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 3.752, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.128%）", "价格位于布林中轨之上（偏离 1.85%，偏多）", "ATR趋势环境：中性（ATR比率 0.95）"]}, {"name": "运输服务", "code": "880459", "period": "60分钟", "entry": 1246.36, "price": 1246.36, "prev_close": 1245.8, "trend": "中性", "atr": 8.223, "atr_pct": 0.66, "atr_ratio": 0.92, "recommendation": "做空", "strength": "强", "score": 4.9, "long_score": 0.05, "short_score": 4.9, "stop_loss": 1258.69, "take_profit": 1221.69, "risk_reward": 2.0, "indicators": {"ma10": 1244.45, "ma20": 1245.34, "ma50": 1247.18, "ma100": 1236.12, "rsi": 50.89, "macd_dif": -0.21, "macd_dea": -0.023, "macd_hist": -0.374, "boll_upper": 1261.0, "boll_mid": 1245.34, "boll_lower": 1229.68, "ma_dir": "向下", "ma_slope": -0.262, "ma_dirs": {"10": "向下", "20": "向下", "50": "向上", "100": "向上"}, "boll_dir": "向下", "boll_slope": -0.262, "boll_width": "扩张"}, "reasons": ["MA10 下穿 MA20 死叉（看空）", "均线空头排列 MA10<MA20<MA50", "MACD 空头（DIF<DEA，柱体 0.015%）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "水务", "code": "880454", "period": "60分钟", "entry": 1291.02, "price": 1291.02, "prev_close": 1293.32, "trend": "中性", "atr": 7.852, "atr_pct": 0.61, "atr_ratio": 1.001, "recommendation": "做多", "strength": "弱", "score": 2.24, "long_score": 2.24, "short_score": 0.0, "stop_loss": 1279.24, "take_profit": 1314.57, "risk_reward": 2.0, "indicators": {"ma10": 1280.93, "ma20": 1283.64, "ma50": 1278.74, "ma100": 1273.46, "rsi": 58.98, "macd_dif": 2.301, "macd_dea": 1.16, "macd_hist": 2.281, "boll_upper": 1299.87, "boll_mid": 1283.64, "boll_lower": 1267.42, "ma_dir": "向上", "ma_slope": 0.747, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.747, "boll_width": "扩张"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.088%）", "RSI=59.0 站上 50（动量偏多，强度 0.90）", "价格位于布林中轨之上（偏离 0.57%，偏多）", "ATR趋势环境：中性（ATR比率 1.00）"]}, {"name": "纺织服饰", "code": "880367", "period": "60分钟", "entry": 1042.2, "price": 1042.2, "prev_close": 1042.91, "trend": "中性", "atr": 5.697, "atr_pct": 0.55, "atr_ratio": 0.89, "recommendation": "做多", "strength": "强", "score": 3.16, "long_score": 3.16, "short_score": 0.0, "stop_loss": 1033.65, "take_profit": 1059.29, "risk_reward": 2.0, "indicators": {"ma10": 1037.81, "ma20": 1039.27, "ma50": 1032.72, "ma100": 1028.41, "rsi": 56.69, "macd_dif": 1.664, "macd_dea": 1.615, "macd_hist": 0.098, "boll_upper": 1047.12, "boll_mid": 1039.27, "boll_lower": 1031.42, "ma_dir": "向上", "ma_slope": 1.463, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.463, "boll_width": "收窄"}, "reasons": ["MACD 金叉（DIF 上穿 DEA，看多）", "RSI=56.7 站上 50（动量偏多，强度 0.67）", "价格位于布林中轨之上（偏离 0.28%，偏多）", "ATR趋势环境：中性（ATR比率 0.89）"]}, {"name": "通用机械", "code": "880437", "period": "60分钟", "entry": 2602.16, "price": 2602.16, "prev_close": 2606.97, "trend": "中性", "atr": 28.29, "atr_pct": 1.09, "atr_ratio": 0.901, "recommendation": "做空", "strength": "强", "score": 3.06, "long_score": 0.0, "short_score": 3.06, "stop_loss": 2644.59, "take_profit": 2517.29, "risk_reward": 2.0, "indicators": {"ma10": 2605.53, "ma20": 2608.1, "ma50": 2598.38, "ma100": 2636.48, "rsi": 47.91, "macd_dif": -1.181, "macd_dea": -0.825, "macd_hist": -0.712, "boll_upper": 2639.61, "boll_mid": 2608.1, "boll_lower": 2576.59, "ma_dir": "向上", "ma_slope": 1.156, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.156, "boll_width": "收窄"}, "reasons": ["MACD 死叉（DIF 下穿 DEA，看空）", "RSI=47.9 跌破 50（动量偏空，强度 0.21）", "价格位于布林中轨之下（偏离 0.23%，偏空）", "ATR趋势环境：中性（ATR比率 0.90）"]}, {"name": "公共交通", "code": "880453", "period": "60分钟", "entry": 1127.69, "price": 1127.69, "prev_close": 1128.18, "trend": "中性", "atr": 11.986, "atr_pct": 1.06, "atr_ratio": 0.913, "recommendation": "观望", "strength": "—", "score": 2.39, "long_score": 2.39, "short_score": 2.0, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 1122.51, "ma20": 1122.3, "ma50": 1097.23, "ma100": 1086.6, "rsi": 57.34, "macd_dif": 7.281, "macd_dea": 8.86, "macd_hist": -3.158, "boll_upper": 1149.27, "boll_mid": 1122.3, "boll_lower": 1095.32, "ma_dir": "向上", "ma_slope": 4.788, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 4.788, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "RSI=57.3 站上 50（动量偏多，强度 0.73）", "价格位于布林中轨之上（偏离 0.48%，偏多）", "ATR趋势环境：中性（ATR比率 0.91）"]}, {"name": "多元金融", "code": "880474", "period": "60分钟", "entry": 1292.95, "price": 1292.95, "prev_close": 1293.06, "trend": "中性", "atr": 11.018, "atr_pct": 0.85, "atr_ratio": 0.975, "recommendation": "观望", "strength": "—", "score": 1.28, "long_score": 0.18, "short_score": 1.28, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 1286.14, "ma20": 1290.06, "ma50": 1283.71, "ma100": 1265.27, "rsi": 53.48, "macd_dif": 1.339, "macd_dea": 1.754, "macd_hist": -0.831, "boll_upper": 1308.25, "boll_mid": 1290.06, "boll_lower": 1271.87, "ma_dir": "向上", "ma_slope": 1.047, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.047, "boll_width": "收窄"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.032%）", "ATR趋势环境：中性（ATR比率 0.98）"]}, {"name": "互联网", "code": "880494", "period": "60分钟", "entry": 2615.52, "price": 2615.52, "prev_close": 2620.6, "trend": "中性", "atr": 28.242, "atr_pct": 1.08, "atr_ratio": 0.963, "recommendation": "做多", "strength": "中", "score": 3.0, "long_score": 3.0, "short_score": 0.0, "stop_loss": 2573.16, "take_profit": 2700.25, "risk_reward": 2.0, "indicators": {"ma10": 2608.79, "ma20": 2573.22, "ma50": 2502.47, "ma100": 2527.24, "rsi": 63.85, "macd_dif": 32.86, "macd_dea": 31.749, "macd_hist": 2.222, "boll_upper": 2665.59, "boll_mid": 2573.22, "boll_lower": 2480.85, "ma_dir": "向上", "ma_slope": 5.838, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 5.838, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.042%）", "RSI=63.9 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.64%，偏多）", "ATR趋势环境：中性（ATR比率 0.96）"]}, {"name": "酒店餐饮", "code": "880423", "period": "60分钟", "entry": 824.63, "price": 824.63, "prev_close": 818.62, "trend": "中性", "atr": 8.809, "atr_pct": 1.07, "atr_ratio": 0.987, "recommendation": "做多", "strength": "强", "score": 3.1, "long_score": 3.1, "short_score": 0.0, "stop_loss": 811.42, "take_profit": 851.06, "risk_reward": 2.0, "indicators": {"ma10": 820.5, "ma20": 807.34, "ma50": 795.06, "ma100": 783.83, "rsi": 65.88, "macd_dif": 8.994, "macd_dea": 7.938, "macd_hist": 2.112, "boll_upper": 838.45, "boll_mid": 807.34, "boll_lower": 776.24, "ma_dir": "向上", "ma_slope": 2.597, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 2.597, "boll_width": "扩张"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.128%）", "RSI=65.9 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 2.14%，偏多）", "ATR趋势环境：中性（ATR比率 0.99）"]}, {"name": "工业机械", "code": "880440", "period": "60分钟", "entry": 2948.94, "price": 2948.94, "prev_close": 2955.3, "trend": "中性", "atr": 34.167, "atr_pct": 1.16, "atr_ratio": 0.923, "recommendation": "做多", "strength": "中", "score": 2.89, "long_score": 2.89, "short_score": 0.0, "stop_loss": 2897.69, "take_profit": 3051.44, "risk_reward": 2.0, "indicators": {"ma10": 2949.88, "ma20": 2940.44, "ma50": 2939.56, "ma100": 2939.06, "rsi": 50.47, "macd_dif": 2.715, "macd_dea": 0.346, "macd_hist": 4.74, "boll_upper": 2992.65, "boll_mid": 2940.44, "boll_lower": 2888.23, "ma_dir": "向上", "ma_slope": 0.375, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.375, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.080%）", "RSI=50.5 站上 50（动量偏多，强度 0.05）", "价格位于布林中轨之上（偏离 0.29%，偏多）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "建筑", "code": "880476", "period": "60分钟", "entry": 1309.34, "price": 1309.34, "prev_close": 1310.76, "trend": "中性", "atr": 6.574, "atr_pct": 0.5, "atr_ratio": 0.971, "recommendation": "做多", "strength": "强", "score": 3.05, "long_score": 3.05, "short_score": 0.0, "stop_loss": 1299.48, "take_profit": 1329.06, "risk_reward": 2.0, "indicators": {"ma10": 1302.4, "ma20": 1299.35, "ma50": 1294.75, "ma100": 1291.33, "rsi": 61.41, "macd_dif": 3.623, "macd_dea": 2.468, "macd_hist": 2.31, "boll_upper": 1311.9, "boll_mid": 1299.35, "boll_lower": 1286.8, "ma_dir": "向上", "ma_slope": 0.67, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.67, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.088%）", "RSI=61.4 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 0.77%，偏多）", "ATR趋势环境：中性（ATR比率 0.97）"]}, {"name": "运输设备", "code": "880432", "period": "60分钟", "entry": 1471.03, "price": 1471.03, "prev_close": 1470.32, "trend": "中性", "atr": 8.234, "atr_pct": 0.56, "atr_ratio": 0.976, "recommendation": "做多", "strength": "中", "score": 2.41, "long_score": 2.41, "short_score": 1.54, "stop_loss": 1458.68, "take_profit": 1495.73, "risk_reward": 2.0, "indicators": {"ma10": 1468.32, "ma20": 1466.31, "ma50": 1452.54, "ma100": 1433.27, "rsi": 58.69, "macd_dif": 4.733, "macd_dea": 5.297, "macd_hist": -1.129, "boll_upper": 1477.12, "boll_mid": 1466.31, "boll_lower": 1455.5, "ma_dir": "向上", "ma_slope": 1.928, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.928, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "RSI=58.7 站上 50（动量偏多，强度 0.87）", "价格位于布林中轨之上（偏离 0.32%，偏多）", "ATR趋势环境：中性（ATR比率 0.98）"]}, {"name": "仓储物流", "code": "880464", "period": "60分钟", "entry": 1737.32, "price": 1737.32, "prev_close": 1739.31, "trend": "中性", "atr": 9.973, "atr_pct": 0.57, "atr_ratio": 0.94, "recommendation": "做多", "strength": "弱", "score": 2.13, "long_score": 2.13, "short_score": 0.0, "stop_loss": 1722.36, "take_profit": 1767.24, "risk_reward": 2.0, "indicators": {"ma10": 1732.11, "ma20": 1728.48, "ma50": 1733.99, "ma100": 1739.3, "rsi": 53.74, "macd_dif": 0.814, "macd_dea": -0.71, "macd_hist": 3.048, "boll_upper": 1746.52, "boll_mid": 1728.48, "boll_lower": 1710.43, "ma_dir": "向下", "ma_slope": -0.696, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向下"}, "boll_dir": "向下", "boll_slope": -0.696, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.088%）", "RSI=53.7 站上 50（动量偏多，强度 0.37）", "价格位于布林中轨之上（偏离 0.51%，偏多）", "ATR趋势环境：中性（ATR比率 0.94）"]}, {"name": "元器件", "code": "880492", "period": "60分钟", "entry": 5053.18, "price": 5053.18, "prev_close": 5075.43, "trend": "中性", "atr": 75.474, "atr_pct": 1.49, "atr_ratio": 0.913, "recommendation": "做多", "strength": "弱", "score": 2.08, "long_score": 2.08, "short_score": 0.0, "stop_loss": 4939.97, "take_profit": 5279.6, "risk_reward": 2.0, "indicators": {"ma10": 5059.05, "ma20": 5020.28, "ma50": 5025.32, "ma100": 5066.3, "rsi": 50.86, "macd_dif": 10.583, "macd_dea": 1.542, "macd_hist": 18.083, "boll_upper": 5164.14, "boll_mid": 5020.28, "boll_lower": 4876.41, "ma_dir": "向上", "ma_slope": 0.279, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.279, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.179%）", "RSI=50.9 站上 50（动量偏多，强度 0.09）", "价格位于布林中轨之上（偏离 0.66%，偏多）", "ATR趋势环境：中性（ATR比率 0.91）"]}, {"name": "环境保护", "code": "880456", "period": "60分钟", "entry": 1338.14, "price": 1338.14, "prev_close": 1338.85, "trend": "中性", "atr": 8.246, "atr_pct": 0.62, "atr_ratio": 0.929, "recommendation": "做多", "strength": "弱", "score": 2.14, "long_score": 2.14, "short_score": 0.0, "stop_loss": 1325.77, "take_profit": 1362.88, "risk_reward": 2.0, "indicators": {"ma10": 1331.6, "ma20": 1332.82, "ma50": 1331.39, "ma100": 1330.0, "rsi": 54.94, "macd_dif": 0.763, "macd_dea": -0.06, "macd_hist": 1.647, "boll_upper": 1343.91, "boll_mid": 1332.82, "boll_lower": 1321.72, "ma_dir": "向上", "ma_slope": 0.367, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 0.367, "boll_width": "收窄"}, "reasons": ["MACD 多头（DIF>DEA，柱体 0.062%）", "RSI=54.9 站上 50（动量偏多，强度 0.49）", "价格位于布林中轨之上（偏离 0.40%，偏多）", "ATR趋势环境：中性（ATR比率 0.93）"]}, {"name": "通讯设备", "code": "880490", "period": "60分钟", "entry": 5895.01, "price": 5895.01, "prev_close": 5920.4, "trend": "中性", "atr": 90.722, "atr_pct": 1.54, "atr_ratio": 0.916, "recommendation": "做多", "strength": "强", "score": 3.04, "long_score": 3.04, "short_score": 0.0, "stop_loss": 5758.93, "take_profit": 6167.17, "risk_reward": 2.0, "indicators": {"ma10": 5894.91, "ma20": 5792.21, "ma50": 5766.41, "ma100": 5824.65, "rsi": 55.3, "macd_dif": 48.088, "macd_dea": 30.406, "macd_hist": 35.363, "boll_upper": 6046.78, "boll_mid": 5792.21, "boll_lower": 5537.65, "ma_dir": "向上", "ma_slope": 1.055, "ma_dirs": {"10": "向上", "20": "向上", "50": "向下", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.055, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.300%）", "RSI=55.3 站上 50（动量偏多，强度 0.53）", "价格位于布林中轨之上（偏离 1.77%，偏多）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "航空", "code": "880430", "period": "60分钟", "entry": 1950.68, "price": 1950.68, "prev_close": 1950.06, "trend": "中性", "atr": 17.558, "atr_pct": 0.9, "atr_ratio": 0.978, "recommendation": "做多", "strength": "中", "score": 2.71, "long_score": 2.71, "short_score": 0.0, "stop_loss": 1924.34, "take_profit": 2003.35, "risk_reward": 2.0, "indicators": {"ma10": 1930.55, "ma20": 1930.01, "ma50": 1882.67, "ma100": 1876.8, "rsi": 65.11, "macd_dif": 15.537, "macd_dea": 15.085, "macd_hist": 0.903, "boll_upper": 1961.38, "boll_mid": 1930.01, "boll_lower": 1898.64, "ma_dir": "向上", "ma_slope": 5.081, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 5.081, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.023%）", "RSI=65.1 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 1.07%，偏多）", "ATR趋势环境：中性（ATR比率 0.98）"]}, {"name": "IT设备", "code": "880489", "period": "60分钟", "entry": 2270.9, "price": 2270.9, "prev_close": 2278.03, "trend": "中性", "atr": 22.69, "atr_pct": 1.0, "atr_ratio": 0.952, "recommendation": "做空", "strength": "中", "score": 2.35, "long_score": 0.0, "short_score": 2.35, "stop_loss": 2304.94, "take_profit": 2202.83, "risk_reward": 2.0, "indicators": {"ma10": 2292.74, "ma20": 2326.97, "ma50": 2318.12, "ma100": 2336.58, "rsi": 33.61, "macd_dif": -18.439, "macd_dea": -10.109, "macd_hist": -16.66, "boll_upper": 2405.61, "boll_mid": 2326.97, "boll_lower": 2248.33, "ma_dir": "向上", "ma_slope": 1.654, "ma_dirs": {"10": "向下", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 1.654, "boll_width": "平稳"}, "reasons": ["MACD 空头（DIF<DEA，柱体 0.367%）", "RSI=33.6 跌破 50（动量偏空，强度 1.00）", "价格位于布林中轨之下（偏离 2.41%，偏空）", "ATR趋势环境：中性（ATR比率 0.95）"]}, {"name": "电信运营", "code": "880452", "period": "60分钟", "entry": 1323.07, "price": 1323.07, "prev_close": 1322.86, "trend": "中性", "atr": 8.439, "atr_pct": 0.64, "atr_ratio": 0.935, "recommendation": "做空", "strength": "强", "score": 3.06, "long_score": 0.0, "short_score": 3.06, "stop_loss": 1335.73, "take_profit": 1297.75, "risk_reward": 2.0, "indicators": {"ma10": 1325.02, "ma20": 1334.98, "ma50": 1336.31, "ma100": 1344.84, "rsi": 36.31, "macd_dif": -5.028, "macd_dea": -3.659, "macd_hist": -2.738, "boll_upper": 1356.48, "boll_mid": 1334.98, "boll_lower": 1313.49, "ma_dir": "向上", "ma_slope": 0.032, "ma_dirs": {"10": "向下", "20": "向上", "50": "向下", "100": "向下"}, "boll_dir": "向上", "boll_slope": 0.032, "boll_width": "扩张"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "MACD 空头（DIF<DEA，柱体 0.103%）", "RSI=36.3 跌破 50（动量偏空，强度 1.00）", "价格位于布林中轨之下（偏离 0.89%，偏空）", "ATR趋势环境：中性（ATR比率 0.93）"]}, {"name": "半导体", "code": "880491", "period": "60分钟", "entry": 5581.68, "price": 5581.68, "prev_close": 5604.63, "trend": "中性", "atr": 81.682, "atr_pct": 1.46, "atr_ratio": 0.917, "recommendation": "观望", "strength": "—", "score": 2.44, "long_score": 2.0, "short_score": 2.44, "stop_loss": null, "take_profit": null, "risk_reward": null, "indicators": {"ma10": 5611.49, "ma20": 5629.07, "ma50": 5710.08, "ma100": 5857.66, "rsi": 42.1, "macd_dif": -39.713, "macd_dea": -43.71, "macd_hist": 7.995, "boll_upper": 5744.71, "boll_mid": 5629.07, "boll_lower": 5513.43, "ma_dir": "向下", "ma_slope": -2.09, "ma_dirs": {"10": "向下", "20": "向下", "50": "向下", "100": "向上"}, "boll_dir": "向下", "boll_slope": -2.09, "boll_width": "收窄"}, "reasons": ["均线空头排列 MA10<MA20<MA50", "RSI=42.1 跌破 50（动量偏空，强度 0.79）", "价格位于布林中轨之下（偏离 0.84%，偏空）", "ATR趋势环境：中性（ATR比率 0.92）"]}, {"name": "供气供热", "code": "880455", "period": "60分钟", "entry": 927.1, "price": 927.1, "prev_close": 925.55, "trend": "中性", "atr": 5.74, "atr_pct": 0.62, "atr_ratio": 1.002, "recommendation": "做多", "strength": "中", "score": 2.82, "long_score": 2.82, "short_score": 0.0, "stop_loss": 918.49, "take_profit": 944.32, "risk_reward": 2.0, "indicators": {"ma10": 919.79, "ma20": 918.98, "ma50": 905.15, "ma100": 899.96, "rsi": 68.42, "macd_dif": 4.856, "macd_dea": 4.561, "macd_hist": 0.589, "boll_upper": 927.63, "boll_mid": 918.98, "boll_lower": 910.34, "ma_dir": "向上", "ma_slope": 3.188, "ma_dirs": {"10": "向上", "20": "向上", "50": "向上", "100": "向上"}, "boll_dir": "向上", "boll_slope": 3.188, "boll_width": "收窄"}, "reasons": ["均线多头排列 MA10>MA20>MA50", "MACD 多头（DIF>DEA，柱体 0.032%）", "RSI=68.4 站上 50（动量偏多，强度 1.00）", "价格位于布林中轨之上（偏离 0.88%，偏多）", "ATR趋势环境：中性（ATR比率 1.00）"]}]}/*DATA_END*/
+// ----- 数据加载（手动刷新，平时零请求、零计算）-----
+function showData(d, src){
+  if(!d) return;
+  render(d);
+  document.getElementById('meta').textContent =
+    '更新时间 ' + d.updated_at + ' · 周期 ' + (d.period||'') + ' · 市场' +
+    (d.market_open ? '开盘中' : '已收盘') + ' · ' + d.source;
+  document.getElementById('srcHint').textContent = src || '';
+}
+function loadLive(){
+  return fetch('./signals-tdx-0908.json', {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+// 初始：先试实时，失败回退内嵌快照（保证双击也能看）
+loadLive().then(function(d){ showData(d, '● 实时数据'); })
+  .catch(function(){
+    if(location.protocol === 'file:'){
+      showData(EMBEDDED, '○ 内嵌快照（双击打开：刷新按钮无法联网，要看最新请点「选择 signals.json」）');
+    } else {
+      showData(EMBEDDED, '○ 内嵌快照（本地服务器未启动，已显示最近一次数据）');
+    }
+  });
+
+// 刷新按钮：点一下才拉一次，最省流量
+document.getElementById('refreshBtn').addEventListener('click', function(){
+  var btn = this;
+  btn.disabled = true; btn.textContent = '↻ 刷新中…';
+  loadLive().then(function(d){ showData(d, '● 实时数据'); })
+    .catch(function(){
+      // file:// 双击模式下浏览器禁止 fetch —— 回退内嵌快照，不再报红错
+      showData(EMBEDDED, '○ 内嵌快照（双击模式无法联网，已显示最近一次数据；要最新请点「选择 signals.json」）');
+    })
+    .then(function(){ btn.disabled = false; btn.textContent = '↻ 刷新数据'; });
+});
+
+// 文件选择：双击(file://)模式下也能手动加载最新 signals.json
+document.getElementById('fileInput').addEventListener('change', function(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    try { showData(JSON.parse(rd.result), '● 本地文件：' + f.name); }
+    catch(err){ document.getElementById('srcHint').textContent = '✗ 文件解析失败（不是合法 JSON）'; }
+  };
+  rd.readAsText(f);
+});
+function fmt(n){ return (n==null) ? '—' : (Math.round(n*100)/100); }
+
+function scaleHTML(markers){
+  var vals = markers.map(function(m){ return m.val; }).filter(function(v){ return v!=null; });
+  if(!vals.length) return '';
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var pad = (max-min)*0.18 || (Math.abs(max)*0.01 || 1);
+  min -= pad; max += pad;
+  var span = (max-min) || 1;
+  var parts = '<div class="scale"><div class="track"></div>';
+  markers.forEach(function(m){
+    if(m.val==null) return;
+    var p = (m.val-min)/span*100;
+    var dotColor = m.cls==='sl' ? 'var(--risk)' : (m.cls==='tp' ? 'var(--reward)' : (m.cls==='cur' ? 'var(--fg)' : 'var(--blue)'));
+    var tri = m.cls==='cur' ? ' px' : '';
+    parts += '<div class="mk '+m.cls+'" style="left:'+p.toFixed(1)+'%">' +
+      (tri ? '<div class="dot'+tri+'"></div>' : '<div class="dot" style="background:'+dotColor+'"></div>') +
+      '<div class="lab">'+m.label+'</div><div class="val">'+fmt(m.val)+(m.unit||'')+'</div></div>';
+  });
+  return parts + '</div>';
+}
+
+// points: [{label, val, kind}] 按数值从左到右（小->大）
+function alignHTML(points){
+  var vals = points.map(function(p){ return p.val; }).filter(function(v){ return v!=null; });
+  if(!vals.length) return '';
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var pad = (max-min)*0.14 || (Math.abs(max)*0.01 || 1);
+  min -= pad; max += pad;
+  var span = (max-min) || 1;
+  var parts = '<div class="align"><div class="ln"></div>';
+  points.forEach(function(p){
+    if(p.val==null) return;
+    var x = (p.val-min)/span*100;
+    parts += '<div class="pt '+(p.kind==='px'?'px':'')+'" style="left:'+x.toFixed(1)+'%" title="'+p.label+'"></div>';
+  });
+  parts += '</div><div class="cap" style="display:flex;justify-content:space-between">' +
+    '<span>'+points[0].label+'</span><span>'+points[points.length-1].label+'</span></div>';
+  return parts;
+}
+
+function gaugeHTML(v){
+  var p = Math.max(0, Math.min(100, v));
+  var zones = v>70 ? '超买' : (v<30 ? '超卖' : '中性');
+  return '<div class="gauge"><div class="ptr" style="left:'+p+'%"></div></div>' +
+    '<div class="zone"><span>超卖&lt;30</span><span>'+fmt(v)+' · '+zones+'</span><span>&gt;70 超买</span></div>';
+}
+
+function dirArrow(d){
+  if(d==='向上') return {sym:'↑', cls:'up'};
+  if(d==='向下') return {sym:'↓', cls:'down'};
+  return {sym:'→', cls:'flat'};
+}
+function dirHTML(d, lead, extra){
+  var a = dirArrow(d);
+  return '<div class="dirline"><span class="dir-arrow '+a.cls+'">'+a.sym+'</span>' +
+    '<span>'+lead+' <b>'+d+'</b></span>' +
+    (extra ? '<span class="muted">'+extra+'</span>' : '') + '</div>';
+}
+function chipHTML(name, d){
+  var a = dirArrow(d);
+  return '<span class="chip '+a.cls+'">'+name+' '+a.sym+'</span>';
+}
+
+function render(d){
+  document.getElementById('meta').textContent = '更新时间 ' + d.updated_at + ' · 周期 ' + (d.period||'') + ' · 市场' + (d.market_open ? '开盘中' : '已收盘') + ' · ' + d.source;
+  var list = document.getElementById('list');
+  list.innerHTML = '';
+
+  // ===== 顶部汇总表：各指数方向 / 趋势环境 / 多空评分 集中对比 =====
+  var rows = (d.signals || []).map(function(s){
+    var dir = s.recommendation==='做多' ? 'long' : (s.recommendation==='做空' ? 'short' : 'hold');
+    return '<tr class="jump-row" data-code="'+s.code+
+           '" data-rec="'+s.recommendation+
+           '" data-trend="'+s.trend+
+           '" data-strength="'+s.strength+'">' +
+      '<td class="idx">'+s.name+'<small>'+s.code+'</small></td>' +
+      '<td><span class="mini '+dir+'">'+s.recommendation+' · '+s.strength+'</span></td>' +
+      '<td class="trend '+s.trend+'">'+s.trend+'</td>' +
+      '<td class="num">'+fmt(s.score)+'</td>' +
+      '<td class="num long-s">'+fmt(s.long_score)+'</td>' +
+      '<td class="num short-s">'+fmt(s.short_score)+'</td>' +
+      '<td class="num">'+fmt(s.atr)+'</td>' +
+      '<td class="num">'+fmt(s.risk_reward)+'</td>' +
+    '</tr>';
+  }).join('');
+  var sum = document.createElement('div');
+  sum.className = 'card summary';
+  sum.innerHTML =
+    '<div class="panel-title">指数信号汇总 · <span id="summaryCount">显示 '+(d.signals||[]).length+' / '+(d.signals||[]).length+' 个</span>（点击行跳转，顶部筛选可隐藏）</div>' +
+    '<div class="filter-bar" id="filterBar">' +
+      '<div class="group"><span class="group-label">方向</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="做多" checked>做多</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="做空" checked>做空</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="观望" checked>观望</label>' +
+      '</div>' +
+      '<div class="group"><span class="group-label">趋势</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="强趋势" checked>强</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="中性" checked>中</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="弱趋势" checked>弱</label>' +
+      '</div>' +
+      '<div class="group"><span class="group-label">强度</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="strength" value="强" checked>强</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="strength" value="中" checked>中</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="strength" value="弱" checked>弱</label>' +
+      '</div>' +
+      '<button type="button" class="filter-reset" id="filterReset">全选</button>' +
+    '</div>' +
+    '<div class="summary-wrap"><table>' +
+      '<thead><tr><th>指数</th><th>方向</th><th>趋势环境</th><th>综合评分</th><th>多评分</th><th>空评分</th><th>ATR</th><th>盈亏比</th></tr></thead>' +
+      '<tbody>'+rows+'</tbody>' +
+    '</table></div>';
+  list.appendChild(sum);
+  // 汇总表点击行 → 平滑滚动到对应行业卡片
+  var jumpTrs = sum.querySelectorAll('tr.jump-row');
+  Array.prototype.forEach.call(jumpTrs, function(tr){
+    tr.addEventListener('click', function(){
+      var el = document.getElementById('card-' + tr.getAttribute('data-code'));
+      if (el) {
+        el.scrollIntoView({behavior:'smooth', block:'start'});
+        // 高亮目标卡片提示已定位
+        el.classList.add('jump-flash');
+        setTimeout(function(){ el.classList.remove('jump-flash'); }, 1200);
+      }
+    });
+  });
+
+  (d.signals || []).forEach(function(s){
+    var rec = s.recommendation, dir = rec==='做多'?'long':(rec==='做空'?'short':'hold');
+    var ind = s.indicators || {};
+    var strengthCls = s.strength==='强'?'strong':(s.strength==='弱'?'weak':'neutral');
+
+    // 开仓阶梯：现价 ≈ 开仓参考价（去重，只放现价；开仓参考价在下方数值网格）
+    var scaleMk = [
+      {label:'现价', val:s.price, cls:'cur'}
+    ];
+    if(s.stop_loss!=null) scaleMk.push({label:'止损', val:s.stop_loss, cls:'sl'});
+    if(s.take_profit!=null) scaleMk.push({label:'止盈', val:s.take_profit, cls:'tp'});
+    var scale = scaleHTML(scaleMk);
+    var slDist = (s.stop_loss!=null) ? fmt(Math.abs(s.stop_loss - s.entry)) : '—';
+    var tpDist = (s.take_profit!=null) ? fmt(Math.abs(s.take_profit - s.entry)) : '—';
+
+    // MACD 状态
+    var macdState = (ind.macd_hist>0) ? '金叉区' : '死叉区';
+    var macdTag = (ind.macd_hist>0) ? 'up':'down';
+
+    // 均线排列（快照：MA10>MA20>MA50 = 多；MA10<MA20<MA50 = 空；其他 = 乱）
+    //    方向（动量）：MA20 斜率正负。
+    //    两者矛盾时 = 排列背离，给橙色警告标签（避免"显示多头排列但所有 MA 都向下"的误导）
+    var maStruct = (ind.ma10!=null && ind.ma20!=null && ind.ma50!=null)
+      ? (ind.ma10>ind.ma20 && ind.ma20>ind.ma50 ? '多'
+        : ind.ma10<ind.ma20 && ind.ma20<ind.ma50 ? '空' : '乱')
+      : null;
+    var maAlign, maAlignCls;
+    if (maStruct==='多' && ind.ma_dir==='向下') {
+      maAlign = '排列背离↓'; maAlignCls = 'warn';
+    } else if (maStruct==='空' && ind.ma_dir==='向上') {
+      maAlign = '反弹未排列'; maAlignCls = 'warn';
+    } else if (maStruct==='多') {
+      maAlign = '多头排列'; maAlignCls = 'up';
+    } else if (maStruct==='空') {
+      maAlign = '空头排列'; maAlignCls = 'down';
+    } else {
+      maAlign = '—'; maAlignCls = 'flat';
+    }
+    var maDirTag = (ind.ma_dir==='向上')?'up':(ind.ma_dir==='向下'?'down':'flat');
+    var maPts = [
+      {label:'MA100', val:ind.ma100, kind:'ma'}, {label:'MA50', val:ind.ma50, kind:'ma'},
+      {label:'MA20', val:ind.ma20, kind:'ma'}, {label:'MA10', val:ind.ma10, kind:'ma'},
+      {label:'现价', val:s.price, kind:'px'}
+    ];
+
+    // 布林带 方向
+    var bollDirTag = (ind.boll_dir==='向上')?'up':(ind.boll_dir==='向下'?'down':'flat');
+    var bollPts = [
+      {label:'上轨', val:ind.boll_upper, kind:'ma'}, {label:'中轨', val:ind.boll_mid, kind:'ma'},
+      {label:'下轨', val:ind.boll_lower, kind:'ma'}, {label:'现价', val:s.price, kind:'px'}
+    ];
+
+    var card = document.createElement('div');
+    card.className = 'card detail-card';
+    card.id = 'card-' + s.code;
+    card.setAttribute('data-rec', s.recommendation);
+    card.setAttribute('data-trend', s.trend);
+    card.setAttribute('data-strength', s.strength);
+    card.innerHTML =
+      '<div class="top">' +
+        '<div><span class="name">'+s.name+'</span><span class="code">'+s.code+'</span></div>' +
+        '<div class="price">'+fmt(s.price)+'<small>最新</small></div>' +
+      '</div>' +
+      '<div class="badges">' +
+        '<span class="badge '+dir+'">'+rec+' · '+s.strength+'</span>' +
+        '<span class="pill '+strengthCls+'">趋势环境 '+s.trend+'</span>' +
+        '<span class="pill">综合评分 '+fmt(s.score)+'</span>' +
+        '<span class="pill">多 '+fmt(s.long_score)+' / 空 '+fmt(s.short_score)+'</span>' +
+      '</div>' +
+
+      // ===== 开仓信息 =====
+      '<div class="panel trade">' +
+        '<div class="panel-title">开仓信息</div>' +
+        scale +
+        '<div class="grid'+(s.stop_loss!=null?'':' three')+'">' +
+          '<div class="m hl"><div class="k">开仓参考价</div><div class="v">'+fmt(s.entry)+'</div></div>' +
+          (s.stop_loss!=null ? '<div class="m risk"><div class="k">止损价 · 距 '+slDist+'</div><div class="v">'+fmt(s.stop_loss)+'</div></div>' : '') +
+          (s.take_profit!=null ? '<div class="m reward"><div class="k">止盈价 · 距 '+tpDist+'</div><div class="v">'+fmt(s.take_profit)+'</div></div>' : '') +
+          '<div class="m"><div class="k">盈亏比</div><div class="v">'+fmt(s.risk_reward)+'</div></div>' +
+          '<div class="m"><div class="k">ATR（波动）</div><div class="v">'+fmt(s.atr)+'<small> '+fmt(s.atr_pct)+'%</small></div></div>' +
+          '<div class="m"><div class="k">ATR 比率</div><div class="v">'+fmt(s.atr_ratio)+'</div></div>' +
+          '<div class="m"><div class="k">昨收</div><div class="v">'+fmt(s.prev_close)+'</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      // ===== 指标信息 =====
+      '<div class="panel ind">' +
+        '<div class="panel-title">指标信息</div>' +
+        '<div class="indi-grid">' +
+          // 均线组
+          '<div class="sub"><h4>均线组 <span class="tag '+maAlignCls+'">'+maAlign+'</span></h4>' +
+            alignHTML(maPts) +
+            dirHTML(ind.ma_dir, '均线方向', 'MA20 斜率 '+fmt(ind.ma_slope)+'%/根') +
+            '<div class="ma-chips">' +
+              chipHTML('MA10', (ind.ma_dirs||{})['10']) +
+              chipHTML('MA20', (ind.ma_dirs||{})['20']) +
+              chipHTML('MA50', (ind.ma_dirs||{})['50']) +
+              chipHTML('MA100', (ind.ma_dirs||{})['100']) +
+            '</div>' +
+          '</div>' +
+          // BOLL
+          '<div class="sub"><h4>布林带 <span class="tag '+bollDirTag+'">'+ind.boll_dir+'</span></h4>' +
+            alignHTML(bollPts) +
+            dirHTML(ind.boll_dir, '布林带方向', '带宽 '+ind.boll_width) +
+            '<div class="kv"><span class="k">价格 / 中轨</span><span class="v">'+(s.price>ind.boll_mid?'上方':'下方')+'</span></div>' +
+          '</div>' +
+          // RSI
+          '<div class="sub"><h4>RSI（相对强弱）</h4>' +
+            gaugeHTML(ind.rsi) +
+            '<div class="kv" style="margin-top:6px"><span class="k">状态</span><span class="v">'+(ind.rsi>70?'超买':(ind.rsi<30?'超卖':'中性'))+'</span></div>' +
+          '</div>' +
+          // MACD
+          '<div class="sub"><h4>MACD <span class="tag '+macdTag+'">'+macdState+'</span></h4>' +
+            '<div class="kv"><span class="k">DIF</span><span class="v">'+fmt(ind.macd_dif)+'</span></div>' +
+            '<div class="kv"><span class="k">DEA</span><span class="v">'+fmt(ind.macd_dea)+'</span></div>' +
+            '<div class="kv"><span class="k">MACD 柱</span><span class="v" style="color:'+(ind.macd_hist>=0?'var(--red)':'var(--green)')+'">'+fmt(ind.macd_hist)+'</span></div>' +
+            '<div class="histbar" style="width:'+Math.min(100,Math.abs(ind.macd_hist)/Math.max(1,Math.abs(ind.macd_hist))*50)+'%;background:'+(ind.macd_hist>=0?'var(--red)':'var(--green)')+';margin-left:'+(ind.macd_hist>=0?'0':'auto')+'"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // ===== 理由 =====
+      (s.reasons.length ? '<ul class="reasons">' + s.reasons.map(function(r){ var c=r.indexOf('多头')>=0||r.indexOf('金叉')>=0||r.indexOf('超卖')>=0?'pos':(r.indexOf('空头')>=0||r.indexOf('死叉')>=0||r.indexOf('超买')>=0?'neg':''); return '<li class="'+c+'">'+r+'</li>'; }).join('') + '</ul>' : '');
+    list.appendChild(card);
+  });
+
+  // ===== 筛选条：方向 / 趋势 / 强度 多选过滤 =====
+  function applyFilter(){
+    var recs = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="rec"]:checked'), function(i){return i.value;});
+    var trends = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="trend"]:checked'), function(i){return i.value;});
+    var strengths = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="strength"]:checked'), function(i){return i.value;});
+    // 汇总表行
+    var total = 0, shown = 0;
+    document.querySelectorAll('tr.jump-row').forEach(function(tr){
+      var v = recs.indexOf(tr.dataset.rec)>=0
+            && trends.indexOf(tr.dataset.trend)>=0
+            && (tr.dataset.strength==='—' || strengths.indexOf(tr.dataset.strength)>=0);
+      tr.style.display = v ? '' : 'none';
+      total++; if (v) shown++;
+    });
+    // 下方卡片
+    document.querySelectorAll('.detail-card').forEach(function(c){
+      var v = recs.indexOf(c.dataset.rec)>=0
+            && trends.indexOf(c.dataset.trend)>=0
+            && (c.dataset.strength==='—' || strengths.indexOf(c.dataset.strength)>=0);
+      c.style.display = v ? '' : 'none';
+    });
+    // 同步 chip 视觉状态
+    document.querySelectorAll('#filterBar .chip').forEach(function(c){
+      var cb = c.querySelector('input[type=checkbox]');
+      c.classList.toggle('on', cb && cb.checked);
+      c.classList.toggle('off', cb && !cb.checked);
+    });
+    // 顶部数量显示「显示 X / 56 个」
+    var sc = document.getElementById('summaryCount');
+    if (sc) sc.textContent = '显示 ' + shown + ' / ' + total + ' 个';
+  }
+  document.querySelectorAll('#filterBar input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', applyFilter);
+  });
+  document.getElementById('filterReset').addEventListener('click', function(){
+    document.querySelectorAll('#filterBar input[type=checkbox]').forEach(function(cb){cb.checked = true;});
+    applyFilter();
+  });
+}
+</script>
+<script src="js/guard-0814b.js"></script>
+<script src="js/access-gate-0815.js"></script>
+</body>
+</html>
