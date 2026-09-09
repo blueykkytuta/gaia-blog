@@ -123,25 +123,84 @@ SERVERS = [
 ]
 
 
+def _recent_trading_days(n):
+    """最近 n 个「周一~周五」日期（YYYYMMDD int），由近及远。节假日会自动无数据并被跳过。"""
+    out, d = [], datetime.date.today()
+    while len(out) < n:
+        if d.weekday() < 5:
+            out.append(int(d.strftime("%Y%m%d")))
+        d -= datetime.timedelta(days=1)
+    return out
+
+
+def _minutes_to_60m(api, code, need_60m=200):
+    """回退方案：用历史分钟线聚合成 60 分钟 K。
+
+    通达信公开服务器自 2026-09-09 起封锁了 get_index_bars / get_security_bars
+    （连接正常、get_security_count 正常，但 K 线接口一律返空），
+    而 get_history_minute_time_data（历史分钟线）仍然可用，故改为自行聚合。
+    一天 240 根 1 分钟，按 60 根一组 → 4 根 60 分钟 K（10:30/11:30/14:00/15:00）。
+    分钟数据仅含 price/vol，故 high/low 用该小时内 price 的最值近似。
+    """
+    need_days = min(max(need_60m // 4 + 8, 40), 90)
+    # 一天 4 根 60 分钟 K 的收盘时刻（与通达信原生一致）
+    HOUR_LABELS = ["10:30", "11:30", "14:00", "15:00"]
+    out = []
+    # _recent_trading_days 由近及远，这里先按「由近及远」收集，最后统一反转成时间升序
+    for d in _recent_trading_days(need_days):
+        try:
+            r = api.get_history_minute_time_data(1, code, d)
+        except Exception:
+            r = None
+        if not r or len(r) < 60:
+            continue  # 周末 / 节假日 / 停牌
+        day_bars = []
+        for g in range(0, len(r) - 59, 60):
+            chunk = r[g:g + 60]
+            prices = [float(x["price"]) for x in chunk]
+            vols = [float(x.get("vol") or 0) for x in chunk]
+            if not prices:
+                continue
+            idx = g // 60
+            label = HOUR_LABELS[idx] if idx < len(HOUR_LABELS) else "15:00"
+            day_bars.append({
+                "date": "%s %s" % (str(d), label),
+                "open": prices[0],
+                "close": prices[-1],
+                "high": max(prices),
+                "low": min(prices),
+                "volume": sum(vols),
+            })
+        # 日内反转：配合下面整体 reverse 后，日内才会变成 10:30 -> 15:00
+        out.extend(reversed(day_bars))
+    out.reverse()  # 旧 -> 新（与 get_index_bars 顺序一致，evaluate 依赖 closes[-1] 为最新价）
+    return out
+
+
 def fetch_kline(api, code, count=320):
-    """拉 60 分钟 K 线（category=3），返回 [{date, open, close, high, low, volume}, ...]"""
+    """拉 60 分钟 K 线，返回 [{date, open, close, high, low, volume}, ...]
+
+    优先用原生 get_index_bars（category=3）；若被封返空，回退到分钟线聚合。
+    """
+    # 1) 原生 60 分钟 K 线
     try:
         bars = api.get_index_bars(3, 1, code, 0, count)
-        if not bars:
-            return []
-        out = []
-        for b in bars:
-            out.append({
-                "date": b["datetime"],
-                "open": float(b["open"]),
-                "close": float(b["close"]),
-                "high": float(b["high"]),
-                "low": float(b["low"]),
-                "volume": float(b.get("vol", 0) or 0),
-            })
-        return out
+        if bars:
+            out = []
+            for b in bars:
+                out.append({
+                    "date": b["datetime"],
+                    "open": float(b["open"]),
+                    "close": float(b["close"]),
+                    "high": float(b["high"]),
+                    "low": float(b["low"]),
+                    "volume": float(b.get("vol", 0) or 0),
+                })
+            return out
     except Exception:
-        return []
+        pass
+    # 2) 回退：分钟线聚合
+    return _minutes_to_60m(api, code, need_60m=min(count, 200))
 
 
 def _cross_up(a, b):
