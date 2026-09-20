@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>期货交易信号 · Carrycore</title>
+<style>
+  :root {
+    --fg:#1d1d1f; --muted:#86868b; --line:#e8e8ed; --bg:#fafafa; --card:#fff;
+    --red:#e24b4a; --green:#2f8a3b; --blue:#3a6ea5; --violet:#8a5bd6;
+    --long:#e24b4a; --short:#2f8a3b; --hold:#86868b;
+    --risk:#e24b4a; --reward:#2f8a3b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--fg); background:var(--bg); line-height:1.6; font-size:17px; -webkit-font-smoothing:antialiased; }
+  header { max-width:860px; margin:0 auto; padding:44px 24px 6px; }
+  h1 { font-size:27px; font-weight:600; margin:0 0 6px; letter-spacing:-.3px; }
+  .meta { color:var(--muted); font-size:13.5px; }
+  main { max-width:860px; margin:0 auto; padding:18px 24px 72px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px 24px; margin:18px 0; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+
+  .top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; }
+  .name { font-size:21px; font-weight:600; }
+  .code { color:var(--muted); font-size:13px; margin-left:8px; font-weight:400; }
+  .price { font-size:26px; font-weight:600; letter-spacing:-.5px; }
+  .price small { font-size:14px; color:var(--muted); font-weight:400; margin-left:6px; }
+  .price small.up { color:var(--long); }
+  .price small.down { color:var(--short); }
+
+  .badges { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .badge { display:inline-block; padding:5px 14px; border-radius:999px; font-size:15px; font-weight:600; letter-spacing:.3px; }
+  .long { color:var(--long); background:rgba(226,75,74,.10); }
+  .short { color:var(--short); background:rgba(47,138,59,.10); }
+  .hold { color:var(--hold); background:#f0f0f2; }
+  .pill { font-size:12.5px; padding:3px 11px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:#fff; }
+  .pill.strong { color:#b06a00; border-color:#f0d9a8; background:#fff8ec; }
+  .pill.weak { color:#5a6b8a; border-color:#cfd9e8; background:#f3f7fc; }
+  .pill.neutral { color:#6b6b70; }
+  .pill.be-on { color:#2f8a3b; border-color:#c9e3cd; background:#f2fbf3; }
+
+  /* 策略说明条：只加一行小字，不动版面 */
+  .strategy { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; font-size:12.5px; color:var(--muted); }
+  .strategy i { font-style:normal; color:var(--fg); font-weight:600; }
+
+  /* panel */
+  .panel { margin-top:18px; border-radius:14px; padding:16px 18px; }
+  .panel.trade { background:linear-gradient(180deg,#fcfcfd,#f7f8fa); border:1px solid var(--line); }
+  .panel.ind { background:#fff; border:1px solid var(--line); }
+  .panel-title { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:0 0 14px; }
+
+  /* price scale */
+  .scale { position:relative; height:54px; margin:6px 4px 2px; }
+  .scale .track { position:absolute; top:24px; left:0; right:0; height:2px; background:var(--line); border-radius:2px; }
+  .mk { position:absolute; top:12px; transform:translateX(-50%); text-align:center; }
+  .mk .dot { width:11px; height:11px; border-radius:50%; border:2px solid #fff; margin:0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
+  .mk .lab { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; }
+  .mk .val { font-size:13px; font-weight:600; white-space:nowrap; }
+  .mk.cur .val { color:var(--fg); }
+  .mk.entry .val { color:var(--fg); }
+  .mk.sl .val { color:var(--risk); }
+  .mk.tp .val { color:var(--reward); }
+  .mk.be .val { color:var(--reward); }
+  .mk.fvgsl .val { color:var(--violet); }
+
+  /* metric grid */
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px; }
+  .grid.three { grid-template-columns:repeat(3,1fr); }
+  .m { background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
+  .m .k { font-size:11.5px; color:var(--muted); }
+  .m .v { font-size:17px; font-weight:600; margin-top:2px; }
+  .m .v small { font-size:12px; color:var(--muted); font-weight:400; }
+  .m.risk .v { color:var(--risk); }
+  .m.reward .v { color:var(--reward); }
+  .m.violet .v { color:var(--violet); }
+  .m.hl { background:#fbfcfe; }
+
+  /* 指标分组 */
+  .indi-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sub { border:1px solid var(--line); border-radius:12px; padding:14px 15px; background:#fff; }
+  .sub h4 { margin:0 0 10px; font-size:14px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .sub h4 .tag { font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; }
+  .tag.up { color:var(--long); background:rgba(226,75,74,.10); }
+  .tag.down { color:var(--short); background:rgba(47,138,59,.10); }
+  .tag.flat { color:var(--muted); background:#f0f0f2; }
+  .tag.warn { color:#a36a00; background:rgba(255,170,40,.14); }
+  .tag.violet { color:#6b3fb0; background:rgba(138,91,214,.12); }
+
+  /* 对齐标尺 */
+  .align { position:relative; height:32px; margin:4px 2px 2px; }
+  .align .ln { position:absolute; top:14px; left:0; right:0; height:2px; background:var(--line); border-radius:2px; }
+  .align .pt { position:absolute; top:9px; transform:translateX(-50%); width:9px; height:9px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.10); background:var(--blue); }
+  .align .pt.px { width:0; height:0; border:none; box-shadow:none; top:6px; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--fg); }
+  .align .cap { font-size:11px; color:var(--muted); }
+
+  /* 方向 */
+  .dirline { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14.5px; flex-wrap:wrap; }
+  .dir-arrow { font-size:21px; font-weight:700; line-height:1; }
+  .dir-arrow.up { color:var(--red); }
+  .dir-arrow.down { color:var(--green); }
+  .dir-arrow.flat { color:var(--muted); }
+  .dirline b { font-weight:600; }
+  .dirline .muted { color:var(--muted); font-size:13px; }
+  .ma-chips { display:flex; gap:7px; margin-top:9px; flex-wrap:wrap; }
+  .chip { font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); display:inline-flex; align-items:center; gap:4px; }
+  .chip.up { color:var(--red); border-color:rgba(226,75,74,.30); background:rgba(226,75,74,.05); }
+  .chip.down { color:var(--green); border-color:rgba(47,138,59,.30); background:rgba(47,138,59,.05); }
+  .chip.flat { color:var(--muted); }
+
+  /* ADX 量能条（0~60 映射，20 / 25 两条分档线） */
+  .gauge { position:relative; height:14px; border-radius:7px; margin:6px 0 4px;
+    background:linear-gradient(90deg,
+      rgba(47,138,59,.20) 0%, rgba(47,138,59,.20) 33.3%,
+      #f0f0f2 33.3%, #f0f0f2 41.7%,
+      rgba(226,75,74,.20) 41.7%, rgba(226,75,74,.20) 100%); }
+  .gauge .ptr { position:absolute; top:-3px; width:3px; height:20px; background:var(--fg); border-radius:2px; transform:translateX(-50%); }
+  .gauge .zone { display:flex; justify-content:space-between; font-size:10.5px; color:var(--muted); }
+
+  .kv { display:flex; justify-content:space-between; font-size:13.5px; padding:3px 0; }
+  .kv .k { color:var(--muted); }
+  .kv .v { font-weight:600; }
+
+  /* reasons */
+  .reasons { margin:16px 0 0; padding:0; list-style:none; }
+  .reasons li { font-size:14px; color:#444; padding:8px 0 8px 20px; position:relative; border-top:1px solid #f1f1f3; line-height:1.7; overflow-wrap:anywhere; word-break:break-word; }
+  .reasons li:first-child { border-top:none; }
+  .reasons li::before { content:""; position:absolute; left:2px; top:15px; width:6px; height:6px; border-radius:50%; background:var(--muted); }
+  .reasons li.pos::before { background:var(--long); }
+  .reasons li.neg::before { background:var(--short); }
+
+  footer { max-width:860px; margin:0 auto; padding:0 24px 48px; color:var(--muted); font-size:12.5px; line-height:1.7; }
+  .disclaim { background:#fff8ec; border:1px solid #f0d9a8; color:#9a6b00; border-radius:12px; padding:12px 16px; margin-top:22px; font-size:12.5px; }
+
+  /* 顶部汇总表 */
+  .summary { margin:6px 0 20px; }
+  .summary .panel-title { margin-bottom:10px; }
+  .summary-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .summary table { width:100%; border-collapse:collapse; font-size:14px; }
+  .summary th, .summary td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .summary th { font-size:11.5px; color:var(--muted); font-weight:600; letter-spacing:.5px; }
+  .summary tr:last-child td { border-bottom:none; }
+  .summary .jump-row { cursor:pointer; transition:background .12s; }
+  .summary .jump-row:hover { background:#f5f5f7; }
+  .summary .jump-row:hover .idx { color:var(--fg); }
+  .card.jump-flash { box-shadow:0 0 0 3px rgba(58,110,165,.35); transition:box-shadow .4s; }
+  .summary .idx { font-weight:600; }
+  .summary .idx small { color:var(--muted); font-weight:400; margin-left:6px; font-size:11px; }
+  .summary .mini { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12.5px; font-weight:600; }
+  .summary .mini.long { color:var(--long); background:rgba(226,75,74,.10); }
+  .summary .mini.short { color:var(--short); background:rgba(47,138,59,.10); }
+  .summary .mini.hold { color:var(--hold); background:#f0f0f2; }
+  .summary .trend { font-weight:600; }
+  .summary .trend.s-strong { color:#b06a00; }
+  .summary .trend.s-mid { color:var(--muted); }
+  .summary .trend.s-weak { color:#5a6b8a; }
+  .summary .num { font-variant-numeric:tabular-nums; }
+  .summary td.risk { color:var(--risk); }
+  .summary td.reward { color:var(--reward); }
+  .rg-dot { display:inline-block; width:10px; height:10px; border-radius:2.5px; margin-right:2.5px; vertical-align:-1px; }
+  .badges .rg-dot { width:11px; height:11px; border-radius:3px; }
+  .summary th .rg-legend { font-weight:400; letter-spacing:0; margin-left:6px; }
+
+  /* 走势与净值（信号汇总表下方） */
+  .explorer .panel-title { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .explorer select { font:inherit; font-size:14px; font-weight:600; color:var(--fg); background:#fff;
+    border:1px solid var(--line); border-radius:10px; padding:7px 12px; cursor:pointer; min-width:200px; }
+  .explorer select:hover { border-color:#c8c8ce; }
+  .exp-sub { display:flex; gap:9px; align-items:center; flex-wrap:wrap; font-size:12.8px; color:var(--muted); margin:0 0 12px; }
+  .exp-sub .mini { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12.5px; font-weight:600; }
+  .exp-sub .mini.long { color:var(--long); background:rgba(226,75,74,.10); }
+  .exp-sub .mini.short { color:var(--short); background:rgba(47,138,59,.10); }
+  .exp-sub .mini.hold { color:var(--hold); background:#f0f0f2; }
+  .chart-wrap { border:1px solid var(--line); border-radius:12px; background:#fff; padding:6px 4px 2px; overflow:hidden; }
+  .chart-wrap + .chart-wrap { margin-top:14px; }
+  .chart-cap { font-size:12.5px; font-weight:600; color:var(--muted); padding:6px 10px 0; letter-spacing:.5px; }
+  .chart-wrap svg { display:block; width:100%; height:auto; }
+  .exp-legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin:9px 4px 0; }
+  .exp-legend i { display:inline-block; width:15px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px; }
+  .exp-legend b { color:var(--fg); font-weight:600; }
+  .exp-sect { font-size:13px; font-weight:600; color:var(--muted); letter-spacing:1px; margin:22px 0 10px; text-transform:uppercase; }
+  .note-line { font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.7; }
+
+  /* 策略对比表（原版 vs 识别引导） */
+  .cmp { width:100%; border-collapse:collapse; font-size:13px; margin-top:4px; }
+  .cmp th, .cmp td { padding:7px 12px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums; }
+  .cmp th:first-child, .cmp td:first-child { text-align:left; color:var(--muted); font-weight:500; }
+  .cmp thead th { font-size:12.5px; color:var(--fg); font-weight:600; border-bottom:1.5px solid #d8d8de; }
+  .cmp td.risk { color:var(--risk); } .cmp td.reward { color:var(--reward); }
+  .cmp .win { font-weight:700; }
+
+  @media (max-width:620px){
+    .grid, .grid.three { grid-template-columns:repeat(2,1fr); }
+    .indi-grid { grid-template-columns:1fr; }
+  }
+
+  /* 工具栏 */
+  .toolbar { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  #refreshBtn { font:inherit; font-size:14px; font-weight:600; color:var(--fg); background:#fff;
+    border:1px solid var(--line); border-radius:10px; padding:8px 18px; cursor:pointer; transition:background .15s; }
+  #refreshBtn:hover { background:#f5f5f7; }
+  #refreshBtn:disabled { opacity:.6; cursor:default; }
+  .filebtn { font-size:13px; color:var(--muted); border:1px dashed var(--line); border-radius:10px;
+    padding:8px 14px; cursor:pointer; display:inline-flex; align-items:center; user-select:none; }
+  .filebtn:hover { color:var(--fg); border-color:#c8c8ce; }
+  .filebtn input { display:none; }
+  .hint { font-size:12.5px; color:var(--muted); }
+
+  /* 筛选条 */
+  .filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:4px 0 14px; font-size:13px; }
+  .filter-bar .group { display:flex; align-items:center; gap:6px; }
+  .filter-bar .group-label { color:var(--muted); font-size:12.5px; margin-right:2px; }
+  .filter-bar .chip { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); background:#fff; cursor:pointer; user-select:none; transition:all .12s;
+    color:var(--fg); }
+  .filter-bar .chip:hover { border-color:#c8c8ce; }
+  .filter-bar .chip input { margin:0; cursor:pointer; accent-color:var(--fg); }
+  .filter-bar .chip.on { background:#f5f5f7; border-color:#c8c8ce; }
+  .filter-bar .chip.off { color:#aab0b8; }
+  .filter-bar .filter-reset { font:inherit; font-size:12.5px; color:var(--muted); background:#fff;
+    border:1px solid var(--line); border-radius:999px; padding:5px 14px; cursor:pointer; margin-left:auto; }
+  .filter-bar .filter-reset:hover { color:var(--fg); border-color:#c8c8ce; }
+</style>
+</head>
+<body>
+<nav class="back-nav" style="max-width:860px;margin:24px auto 0;padding:0 24px;font-size:13px;"><a href="index.html" style="color:#86868b;text-decoration:none;">← 返回首页</a></nav>
+<header>
+  <h1>期货交易信号</h1>
+  <div class="meta" id="meta">加载中…</div>
+  <div class="strategy">
+    <span>策略 <i>tori策略</i></span><span>·</span>
+    <span>Tori 趋势线（行动线进场 / 安全线止损离场）</span><span>·</span>
+    <span>ADX 择时手数</span><span>·</span>
+    <span>FVG 分批止损</span><span>·</span>
+    <span>0.38R 保本</span>
+  </div>
+  <div class="toolbar">
+    <button id="refreshBtn" type="button">↻ 刷新数据</button>
+    <label class="filebtn">选择信号 JSON<input type="file" id="fileInput" accept=".json,application/json"></label>
+    <span class="hint" id="srcHint"></span>
+  </div>
+</header>
+<main id="list"></main>
+<footer>
+  <p>数据源：新浪财经 实时行情 + 日线 K 线（免费，延迟约 3–15 秒）。周期为日线，标的为 6 个宽基指数，信号由 tori 策略计算得出；期货品种可对应 IF / IC / IH / IM。汇总表下方可切换标的和策略变体（原版 tori / 市场识别引导版）查看日 K 线、市场状态色带、趋势线与买卖点、投资净值曲线、投资情况要素与两版对比——后几项是把该标的的同一批日线按同一套规则完整回测跑出来的结果，为了 6 个宽基共用一套参数，回测参数按 ATR 倍数换算（口径与回测沙盒一致）。市场状态由独立的识别组件（EMA/ADX/ER/CHOP 六项加权 → 状态机确认）给出，第 i 根 K 线只用 i-1 收盘已确认的状态，无未来函数。数据按需刷新；点击 ↻ 刷新按钮可重新拉取最新快照。</p>
+  <div class="disclaim">⚠️ 免责声明：以上内容基于公开行情与量化规则自动生成，仅供参考，<b>不构成投资建议</b>。期货杠杆高、风险大，任何决策须结合个人风险承受能力独立判断，必要时咨询持牌机构。过往表现不预示未来收益。</div>
+</footer>
+<script>
+// 先尝试取实时数据；本地双击(file://)或服务器未启动则回退到内嵌数据，保证页面始终可看
+var EMBEDDED = /*DATA_START*/{"updated_at": "2026-09-20 23:47:09", "source": "新浪财经 实时行情 + 日线K线（免费，延迟约 3-15 秒）", "period": "日线", "market_open": false, "strategy": "tori策略 · Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本", "strategy_note": "趋势强弱用 ADX(14) 衡量；看多看空用是否有仓衡量，没单即为中性；无固定止盈，收盘跌回安全线即离场。", "regime_note": "市场识别引导版：BULL 只做多 / BEAR 只做空 / TRANSITION 放行突破入场 / RANGE 做上下趋势线均值回归（触线进场、对侧线止盈、1×ATR 止损、12 根超时）。状态在第 i 根只用 i-1 收盘已确认的结果，无未来函数。", "bars_max": 1023, "signals": [{"name": "沪深300", "code": "sh000300", "period": "日线", "price": 4507.39, "prev_close": 4460.16, "provisional": false, "bar_state": "已收盘", "chg_pct": 1.06, "atr": 52.049, "atr_pct": 1.15, "adx": 24.92, "adx_prev": 24.56, "adx_rising": true, "adx_dir": "上行", "adx_dir_tag": "强", "trend": "中性", "strength": "中", "adx_hi": true, "lots_suggest": 2, "cooldown_bars": 2, "be_trigger_r": 0.38, "be_offset_atr": 0.15, "strategy": "tori策略（Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本）", "fvg_cand": {"long": null, "short": {"j": 1018, "edge": 4533.66, "near": 4504.49, "date": "2026-09-14", "stop": 4533.66, "src": "fvg", "capped": false, "kind": "bear", "dist": 26.27, "dist_atr": 0.5}}, "recommendation": "看空", "lots": 2, "entry": 4450.04, "entry_time": "2026-09-15", "held_bars": 3, "stop_loss": 4564.28, "stop_src": "line", "fvg_stop": 4533.66, "fvg_stop_src": "fvg", "be_line": 4442.46, "be_hit": false, "risk_pts": 138.21, "entry_adx": 21.65, "entry_lots": 2, "sl_dist": 56.89, "take_profit": null, "risk_reward": null, "exit_rule": "收盘涨回安全线上方 → 离场", "lines": {"safety": {"p": 4559.08, "slope": -8.0403, "slope_pct": -0.1764, "dir": "向下", "touches": 2, "a_date": "2026-07-01", "b_date": "2026-08-18"}, "action": {"p": 4497.67, "slope": 0.6753, "slope_pct": 0.015, "dir": "向上", "touches": 3, "a_date": "2025-09-04", "b_date": "2026-04-07"}}, "fvg": {"j": 1018, "edge": 4533.66, "date": "2026-09-14", "capped": false, "mode": "fvg", "dist": 26.27, "dist_atr": 0.5, "kind": "bear"}, "lines_safety_p": 4559.08, "lines_action_p": 4497.67, "reasons": [{"t": "ADX=24.9，站上 20 且持续上行 → 趋势强弱判定为 中性", "c": ""}, {"t": "开仓于 2026-09-15（破上升趋势线入场），入场 4450.04，已持有 3 根", "c": "neg"}, {"t": "行动线（入场依据）：上升 线，触点 3，现在 已翻到价格上方 位于 4497.67", "c": "neg"}, {"t": "安全线（止损依据）：下降 线，触点 2，现在 4559.08（价格在下方）", "c": "neg"}, {"t": "主线止损 4564.28（距现价 56.89 点）｜风险 138.21 点", "c": ""}, {"t": "分批腿止损 4533.66：来自 2026-09-14 的 FVG 外沿 4533.66", "c": "neg"}, {"t": "保本规则：浮盈 ≥ 0.38R 后止损抬到 4442.46（保本线）（未触发）", "c": ""}, {"t": "离场规则：收盘涨回安全线上方就走；无固定止盈，趋势线不断推进就一路持有", "c": ""}, {"t": "手数：本笔开仓时 ADX=21.6 → 2 手；当下 ADX=24.9（>20 且上行）若新开仓建议 2 手", "c": ""}], "indicators": {"adx": 24.92, "adx_prev": 24.56, "adx_dir": "上行", "adx_zone": "中性", "adx_hi": true, "atr": 52.049, "atr_pct": 1.15, "lots": 2, "lots_now": 2, "be_trigger_r": 0.38, "n_lines": 409, "n_lines_up": 191, "n_lines_dn": 218, "fvg_max_age": 30, "fvg_cap_atr": 1.0, "kline_bars": 1023}, "regime_now": "BEAR", "regime_dur": 3, "regime_strip": "SSSSSSSSSSSRRRRRBBBBBBBBBBBBBBBBBBBBRRBBBBBBBBBTTTTTTRRRRBBBBBBTTTRRRRRRRRRRSSSSSSSSSSSSSSSRRRRRRRRRRRRRRRRRRRRRRRRRRSSS", "chart": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [4461.737, 4491.921, 4517.272, 4514.442, 4492.846, 4445.861, 4517.34, 4562.67, 4594.947, 4615.133, 4676.124, 4726.638, 4694.431, 4728.995, 4727.166, 4750.515, 4751.279, 4816.027, 4771.735, 4776.335, 4757.077, 4737.576, 4820.972, 4857.654, 4895.8, 4871.119, 4902.278, 4965.018, 4919.425, 5027.641, 4911.622, 4836.329, 4818.705, 4829.613, 4886.239, 4818.844, 4873.196, 4900.115, 4940.945, 4889.266, 4937.512, 4897.897, 4860.612, 4921.345, 4897.316, 4886.965, 4703.773, 4743.451, 4753.115, 4730.072, 4784.64, 4829.289, 4894.879, 4859.701, 4916.044, 4949.346, 5048.026, 4900.384, 4950.975, 4981.825, 4866.043, 4914.493, 4972.692, 4865.171, 4809.499, 4868.542, 4813.871, 4804.484, 4774.402, 4887.536, 4745.438, 4691.122, 4797.943, 4711.532, 4661.622, 4575.671, 4630.853, 4710.66, 4735.171, 4685.408, 4656.027, 4623.799, 4582.095, 4566.047, 4623.854, 4561.817, 4566.943, 4550.189, 4621.803, 4656.098, 4698.816, 4689.449, 4660.466, 4716.975, 4672.975, 4672.276, 4734.073, 4660.055, 4613.298, 4585.435, 4620.949, 4542.244, 4549.432, 4594.479, 4615.839, 4561.986, 4618.734, 4581.514, 4570.912, 4575.316, 4567.895, 4575.991, 4578.513, 4550.187, 4514.295, 4474.947, 4473.805, 4449.883, 4463.621, 4492.323], "h": [4496.411, 4523.175, 4532.109, 4519.693, 4494.457, 4458.926, 4595.556, 4579.197, 4655.099, 4653.398, 4701.284, 4731.273, 4739.221, 4738.324, 4763.043, 4776.826, 4801.447, 4823.47, 4786.444, 4795.168, 4778.189, 4813.61, 4829.272, 4892.796, 4901.858, 4887.213, 4960.398, 4971.303, 5001.12, 5030.519, 4935.617, 4868.601, 4854.525, 4866.212, 4937.933, 4851.349, 4922.438, 4952.741, 4974.211, 4922.33, 4954.07, 4918.794, 4930.278, 4991.853, 4938.781, 4924.344, 4779.862, 4802.505, 4786.516, 4766.173, 4809.861, 4892.55, 4908.282, 4933.929, 4976.891, 5061.511, 5064.265, 4953.232, 5031.999, 4981.983, 4928.599, 4987.56, 5017.375, 4896.993, 4890.965, 4878.323, 4839.51, 4830.046, 4882.848, 4906.49, 4775.236, 4796.502, 4826.864, 4771.057, 4663.531, 4628.799, 4739.233, 4772.082, 4737.509, 4704.084, 4702.525, 4646.487, 4626.706, 4596.206, 4635.589, 4572.588, 4613.694, 4679.859, 4675.646, 4706.729, 4714.465, 4715.881, 4700.435, 4727.234, 4676.712, 4742.404, 4744.005, 4674.375, 4631.126, 4629.0, 4621.389, 4573.378, 4612.038, 4631.349, 4643.335, 4625.086, 4640.081, 4583.271, 4585.987, 4602.196, 4580.702, 4587.726, 4581.904, 4569.833, 4520.17, 4504.489, 4496.956, 4483.356, 4495.835, 4523.092], "l": [4447.137, 4450.049, 4492.054, 4459.61, 4437.595, 4420.694, 4513.771, 4552.424, 4590.109, 4615.133, 4654.853, 4672.556, 4689.414, 4714.467, 4720.685, 4722.007, 4750.35, 4759.86, 4735.606, 4762.644, 4743.436, 4737.114, 4797.545, 4834.281, 4866.875, 4849.987, 4889.566, 4926.79, 4919.425, 4913.604, 4832.69, 4806.146, 4773.534, 4825.643, 4780.711, 4785.349, 4857.135, 4892.683, 4891.343, 4843.227, 4878.787, 4836.685, 4831.997, 4904.897, 4889.746, 4798.91, 4677.568, 4715.391, 4718.995, 4685.501, 4757.557, 4803.184, 4866.061, 4859.701, 4916.044, 4928.458, 4892.094, 4892.268, 4944.876, 4845.192, 4827.149, 4914.493, 4925.631, 4800.484, 4809.499, 4789.796, 4756.725, 4751.405, 4734.867, 4780.747, 4670.25, 4649.044, 4772.042, 4673.35, 4492.085, 4521.181, 4566.281, 4692.833, 4698.872, 4642.939, 4615.531, 4552.229, 4516.316, 4478.209, 4588.197, 4529.186, 4555.247, 4550.189, 4611.066, 4649.576, 4659.47, 4660.474, 4657.693, 4661.882, 4637.128, 4662.715, 4687.526, 4568.066, 4569.228, 4579.261, 4527.487, 4523.023, 4542.843, 4584.993, 4608.462, 4557.346, 4604.77, 4534.389, 4536.925, 4530.762, 4545.411, 4546.306, 4548.363, 4533.659, 4461.57, 4473.275, 4444.628, 4417.597, 4453.919, 4480.586], "c": [4491.95, 4450.049, 4526.067, 4478.914, 4440.789, 4440.616, 4595.556, 4566.224, 4636.566, 4646.155, 4701.284, 4685.246, 4736.608, 4728.672, 4757.442, 4767.997, 4799.627, 4786.327, 4769.369, 4770.947, 4758.208, 4810.347, 4807.307, 4877.093, 4900.51, 4871.912, 4951.837, 4948.047, 4998.342, 4914.597, 4859.593, 4833.524, 4852.883, 4850.7, 4783.098, 4845.096, 4921.597, 4947.849, 4908.171, 4914.213, 4892.121, 4844.256, 4914.559, 4938.809, 4904.745, 4816.92, 4713.636, 4801.811, 4748.593, 4722.412, 4777.321, 4891.713, 4884.232, 4931.386, 4941.599, 5059.658, 4919.386, 4943.02, 5020.104, 4868.221, 4926.921, 4979.433, 4958.977, 4812.296, 4842.174, 4841.998, 4792.262, 4755.534, 4876.313, 4780.787, 4695.383, 4796.502, 4786.783, 4698.434, 4529.095, 4598.321, 4739.229, 4717.244, 4728.002, 4649.192, 4702.427, 4569.524, 4600.262, 4549.72, 4588.197, 4543.178, 4600.93, 4658.155, 4651.31, 4694.437, 4702.025, 4663.789, 4690.917, 4663.951, 4665.881, 4741.098, 4725.813, 4588.696, 4592.75, 4618.895, 4563.127, 4552.033, 4590.794, 4630.277, 4609.176, 4625.086, 4611.439, 4547.956, 4552.578, 4548.05, 4575.025, 4558.737, 4572.6, 4548.39, 4510.155, 4480.082, 4450.04, 4480.268, 4460.156, 4507.393], "lines": [{"k": "dn", "ai": 965, "ap": 5017.375, "s": -8.0403, "t": 2, "role": "safe"}, {"k": "up", "ai": 770, "ap": 4327.507, "s": 0.6753, "t": 3, "role": "action"}, {"k": "dn", "ai": 980, "ap": 4772.082, "s": -1.4777, "t": 2, "role": ""}, {"k": "dn", "ai": 972, "ap": 4906.49, "s": -6.018, "t": 2, "role": ""}, {"k": "dn", "ai": 959, "ap": 5064.265, "s": -7.815, "t": 2, "role": ""}, {"k": "dn", "ai": 959, "ap": 5064.265, "s": -8.0065, "t": 3, "role": ""}, {"k": "up", "ai": 770, "ap": 4327.507, "s": 0.5177, "t": 2, "role": ""}, {"k": "up", "ai": 682, "ap": 3768.031, "s": 1.6872, "t": 2, "role": ""}, {"k": "up", "ai": 717, "ap": 3827.083, "s": 3.1079, "t": 3, "role": "broken", "bi": 74}, {"k": "up", "ai": 717, "ap": 3827.083, "s": 3.1165, "t": 2, "role": "broken", "bi": 74}], "trades": [{"ei": -7, "ep": 4583.25, "xi": 6, "xp": 4517.34, "d": "S", "p": 65.9, "l": 1, "m": 0}, {"ei": 10, "ep": 4701.28, "xi": 39, "xp": 4843.98, "d": "L", "p": 142.7, "l": 1, "m": 0}, {"ei": 53, "ep": 4931.39, "xi": 56, "xp": 4944.93, "d": "L", "p": 13.5, "l": 1, "m": 0}, {"ei": 67, "ep": 4755.53, "xi": 76, "xp": 4738.41, "d": "S", "p": 17.1, "l": 1, "m": 0}, {"ei": 87, "ep": 4658.15, "xi": 97, "xp": 4660.06, "d": "L", "p": 1.9, "l": 1, "m": 0}, {"ei": 112, "ep": 4572.6, "xi": 113, "xp": 4545.01, "d": "L", "p": -27.6, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8, -58.4, -58.4, -193.7, -264.6, -264.6, -264.6, -336.9, -387.4, -387.4, -362.0, -362.0, -413.1, -413.1, -413.1, -413.1, -312.1, -468.2, -468.2, -587.3, -587.3, -750.3, -877.9, -877.9, -914.6, -914.6, -914.6, -914.6, -945.0, -945.0, -945.0, -749.0, -749.0, -749.0, -740.4, -740.4, -740.4, -779.1, -779.1, -766.6, -817.2, -817.2, -730.4, -730.4, -730.4, -617.9, -612.7, -607.2, -607.2, -605.5, -605.5, -631.9, -631.9, -631.9, -631.9, -631.9, -15.0, -15.0, -21.8, -21.8, -39.1, -39.1, -39.1, -39.1, 17.0, 17.0, -57.3, -57.3, 89.5, 89.5, 53.5, 53.5, 35.3, 30.8, 30.8, 30.8, 150.9, 150.9, 150.9, 150.9, 150.9, 150.9, 507.0, 519.1, 519.1, 527.7, 535.8, 427.9, 427.9, 435.8, 435.8, 435.8, 380.9, 380.9, 380.9, 446.8, 446.8, 446.8, 446.8, 589.5, 589.5, 603.1, 603.1, 620.2, 620.2, 620.2, 622.1, 622.1, 594.5], "eq_n": 1023, "dd": 1152.7}, "stats": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 52, "longs": 25, "shorts": 27, "wins": 27, "losses": 25, "win_rate": 51.9, "pf": 1.41, "pnl": 731.2, "pnl_per_lot": 594.5, "avg_trade": 14.1, "avg_per_lot": 11.43, "max_dd": 1152.7, "max_dd_range": ["2022-09-09", "2023-11-15"], "avg_held": 8.9, "avg_lots": 1.12, "be_hits": 27, "splits": 6, "mr_trades": 0, "best": {"pnl": 712.2, "date": "2025-08-13", "dir": "long"}, "worst": {"pnl": -255.1, "date": "2023-08-18", "dir": "short"}, "open_pos": "short"}, "chart_reg": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [4461.737, 4491.921, 4517.272, 4514.442, 4492.846, 4445.861, 4517.34, 4562.67, 4594.947, 4615.133, 4676.124, 4726.638, 4694.431, 4728.995, 4727.166, 4750.515, 4751.279, 4816.027, 4771.735, 4776.335, 4757.077, 4737.576, 4820.972, 4857.654, 4895.8, 4871.119, 4902.278, 4965.018, 4919.425, 5027.641, 4911.622, 4836.329, 4818.705, 4829.613, 4886.239, 4818.844, 4873.196, 4900.115, 4940.945, 4889.266, 4937.512, 4897.897, 4860.612, 4921.345, 4897.316, 4886.965, 4703.773, 4743.451, 4753.115, 4730.072, 4784.64, 4829.289, 4894.879, 4859.701, 4916.044, 4949.346, 5048.026, 4900.384, 4950.975, 4981.825, 4866.043, 4914.493, 4972.692, 4865.171, 4809.499, 4868.542, 4813.871, 4804.484, 4774.402, 4887.536, 4745.438, 4691.122, 4797.943, 4711.532, 4661.622, 4575.671, 4630.853, 4710.66, 4735.171, 4685.408, 4656.027, 4623.799, 4582.095, 4566.047, 4623.854, 4561.817, 4566.943, 4550.189, 4621.803, 4656.098, 4698.816, 4689.449, 4660.466, 4716.975, 4672.975, 4672.276, 4734.073, 4660.055, 4613.298, 4585.435, 4620.949, 4542.244, 4549.432, 4594.479, 4615.839, 4561.986, 4618.734, 4581.514, 4570.912, 4575.316, 4567.895, 4575.991, 4578.513, 4550.187, 4514.295, 4474.947, 4473.805, 4449.883, 4463.621, 4492.323], "h": [4496.411, 4523.175, 4532.109, 4519.693, 4494.457, 4458.926, 4595.556, 4579.197, 4655.099, 4653.398, 4701.284, 4731.273, 4739.221, 4738.324, 4763.043, 4776.826, 4801.447, 4823.47, 4786.444, 4795.168, 4778.189, 4813.61, 4829.272, 4892.796, 4901.858, 4887.213, 4960.398, 4971.303, 5001.12, 5030.519, 4935.617, 4868.601, 4854.525, 4866.212, 4937.933, 4851.349, 4922.438, 4952.741, 4974.211, 4922.33, 4954.07, 4918.794, 4930.278, 4991.853, 4938.781, 4924.344, 4779.862, 4802.505, 4786.516, 4766.173, 4809.861, 4892.55, 4908.282, 4933.929, 4976.891, 5061.511, 5064.265, 4953.232, 5031.999, 4981.983, 4928.599, 4987.56, 5017.375, 4896.993, 4890.965, 4878.323, 4839.51, 4830.046, 4882.848, 4906.49, 4775.236, 4796.502, 4826.864, 4771.057, 4663.531, 4628.799, 4739.233, 4772.082, 4737.509, 4704.084, 4702.525, 4646.487, 4626.706, 4596.206, 4635.589, 4572.588, 4613.694, 4679.859, 4675.646, 4706.729, 4714.465, 4715.881, 4700.435, 4727.234, 4676.712, 4742.404, 4744.005, 4674.375, 4631.126, 4629.0, 4621.389, 4573.378, 4612.038, 4631.349, 4643.335, 4625.086, 4640.081, 4583.271, 4585.987, 4602.196, 4580.702, 4587.726, 4581.904, 4569.833, 4520.17, 4504.489, 4496.956, 4483.356, 4495.835, 4523.092], "l": [4447.137, 4450.049, 4492.054, 4459.61, 4437.595, 4420.694, 4513.771, 4552.424, 4590.109, 4615.133, 4654.853, 4672.556, 4689.414, 4714.467, 4720.685, 4722.007, 4750.35, 4759.86, 4735.606, 4762.644, 4743.436, 4737.114, 4797.545, 4834.281, 4866.875, 4849.987, 4889.566, 4926.79, 4919.425, 4913.604, 4832.69, 4806.146, 4773.534, 4825.643, 4780.711, 4785.349, 4857.135, 4892.683, 4891.343, 4843.227, 4878.787, 4836.685, 4831.997, 4904.897, 4889.746, 4798.91, 4677.568, 4715.391, 4718.995, 4685.501, 4757.557, 4803.184, 4866.061, 4859.701, 4916.044, 4928.458, 4892.094, 4892.268, 4944.876, 4845.192, 4827.149, 4914.493, 4925.631, 4800.484, 4809.499, 4789.796, 4756.725, 4751.405, 4734.867, 4780.747, 4670.25, 4649.044, 4772.042, 4673.35, 4492.085, 4521.181, 4566.281, 4692.833, 4698.872, 4642.939, 4615.531, 4552.229, 4516.316, 4478.209, 4588.197, 4529.186, 4555.247, 4550.189, 4611.066, 4649.576, 4659.47, 4660.474, 4657.693, 4661.882, 4637.128, 4662.715, 4687.526, 4568.066, 4569.228, 4579.261, 4527.487, 4523.023, 4542.843, 4584.993, 4608.462, 4557.346, 4604.77, 4534.389, 4536.925, 4530.762, 4545.411, 4546.306, 4548.363, 4533.659, 4461.57, 4473.275, 4444.628, 4417.597, 4453.919, 4480.586], "c": [4491.95, 4450.049, 4526.067, 4478.914, 4440.789, 4440.616, 4595.556, 4566.224, 4636.566, 4646.155, 4701.284, 4685.246, 4736.608, 4728.672, 4757.442, 4767.997, 4799.627, 4786.327, 4769.369, 4770.947, 4758.208, 4810.347, 4807.307, 4877.093, 4900.51, 4871.912, 4951.837, 4948.047, 4998.342, 4914.597, 4859.593, 4833.524, 4852.883, 4850.7, 4783.098, 4845.096, 4921.597, 4947.849, 4908.171, 4914.213, 4892.121, 4844.256, 4914.559, 4938.809, 4904.745, 4816.92, 4713.636, 4801.811, 4748.593, 4722.412, 4777.321, 4891.713, 4884.232, 4931.386, 4941.599, 5059.658, 4919.386, 4943.02, 5020.104, 4868.221, 4926.921, 4979.433, 4958.977, 4812.296, 4842.174, 4841.998, 4792.262, 4755.534, 4876.313, 4780.787, 4695.383, 4796.502, 4786.783, 4698.434, 4529.095, 4598.321, 4739.229, 4717.244, 4728.002, 4649.192, 4702.427, 4569.524, 4600.262, 4549.72, 4588.197, 4543.178, 4600.93, 4658.155, 4651.31, 4694.437, 4702.025, 4663.789, 4690.917, 4663.951, 4665.881, 4741.098, 4725.813, 4588.696, 4592.75, 4618.895, 4563.127, 4552.033, 4590.794, 4630.277, 4609.176, 4625.086, 4611.439, 4547.956, 4552.578, 4548.05, 4575.025, 4558.737, 4572.6, 4548.39, 4510.155, 4480.082, 4450.04, 4480.268, 4460.156, 4507.393], "lines": [{"k": "dn", "ai": 965, "ap": 5017.375, "s": -8.0403, "t": 2, "role": "pend"}, {"k": "up", "ai": 770, "ap": 4327.507, "s": 0.5177, "t": 2, "role": "pend"}, {"k": "dn", "ai": 980, "ap": 4772.082, "s": -1.4777, "t": 2, "role": ""}, {"k": "dn", "ai": 972, "ap": 4906.49, "s": -6.018, "t": 2, "role": ""}, {"k": "dn", "ai": 959, "ap": 5064.265, "s": -7.815, "t": 2, "role": ""}, {"k": "dn", "ai": 959, "ap": 5064.265, "s": -8.0065, "t": 3, "role": ""}, {"k": "up", "ai": 682, "ap": 3768.031, "s": 1.6872, "t": 2, "role": ""}, {"k": "up", "ai": 387, "ap": 3108.352, "s": 0.2513, "t": 2, "role": ""}, {"k": "up", "ai": 717, "ap": 3827.083, "s": 3.1079, "t": 3, "role": "broken", "bi": 74}, {"k": "up", "ai": 717, "ap": 3827.083, "s": 3.1165, "t": 2, "role": "broken", "bi": 74}], "trades": [{"ei": 6, "ep": 4595.56, "xi": 39, "xp": 4843.98, "d": "L", "p": 248.4, "l": 1, "m": 0}, {"ei": 66, "ep": 4792.26, "xi": 70, "xp": 4687.65, "d": "L", "p": -104.6, "l": 1, "m": 1}, {"ei": 87, "ep": 4658.15, "xi": 97, "xp": 4660.06, "d": "L", "p": 1.9, "l": 1, "m": 0}, {"ei": 109, "ep": 4548.05, "xi": 110, "xp": 4567.9, "d": "L", "p": 19.8, "l": 1, "m": 1}, {"ei": 113, "ep": 4548.39, "xi": 114, "xp": 4487.8, "d": "L", "p": -60.6, "l": 1, "m": 1}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8, -58.4, -58.4, -58.4, -9.9, -9.9, -9.9, -82.2, -132.8, -132.8, -107.3, -107.3, -107.3, -100.8, -100.8, -100.8, 0.3, -155.9, -155.9, -87.4, -87.4, -143.9, -143.9, -143.9, -180.7, -180.7, -180.7, -180.7, -211.1, -211.1, -211.1, -211.1, -211.1, -211.1, -202.5, -202.5, -202.5, -241.2, -241.2, -228.6, -313.6, -365.9, -365.9, -360.7, -360.7, -248.1, -242.9, -237.5, -237.5, -235.7, -235.7, -262.2, -262.2, -262.2, -262.2, -262.2, 354.7, 354.7, 347.9, 347.9, 330.7, 330.7, 330.7, 330.7, 386.7, 339.4, 339.4, 287.8, 287.8, 207.8, 171.8, 171.8, 215.0, 181.6, 181.6, 181.6, 301.8, 301.8, 301.8, 301.8, 301.8, 301.8, 657.9, 669.9, 669.9, 678.5, 686.7, 686.7, 686.7, 686.7, 686.7, 686.7, 743.3, 743.3, 659.1, 659.1, 659.1, 659.1, 659.1, 907.6, 907.6, 907.6, 907.6, 803.0, 803.0, 803.0, 804.9, 824.7, 764.1], "eq_n": 1023, "dd": 446.0}, "stats_reg": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 48, "longs": 22, "shorts": 26, "wins": 27, "losses": 21, "win_rate": 56.2, "pf": 1.8, "pnl": 1028.4, "pnl_per_lot": 764.1, "avg_trade": 21.4, "avg_per_lot": 15.92, "max_dd": 446.0, "max_dd_range": ["2022-09-09", "2024-04-26"], "avg_held": 8.0, "avg_lots": 1.1, "be_hits": 21, "splits": 5, "mr_trades": 14, "best": {"pnl": 712.2, "date": "2025-08-13", "dir": "long"}, "worst": {"pnl": -156.2, "date": "2023-06-16", "dir": "long"}, "open_pos": null}}, {"name": "中证1000", "code": "sh000852", "period": "日线", "price": 7687.59, "prev_close": 7548.82, "provisional": false, "bar_state": "已收盘", "chg_pct": 1.84, "atr": 153.097, "atr_pct": 1.99, "adx": 20.1, "adx_prev": 20.78, "adx_rising": false, "adx_dir": "下行", "adx_dir_tag": "中", "trend": "中性", "strength": "中", "adx_hi": false, "lots_suggest": 1, "cooldown_bars": 2, "be_trigger_r": 0.38, "be_offset_atr": 0.15, "strategy": "tori策略（Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本）", "fvg_cand": {"long": null, "short": {"j": 1001, "edge": 7842.25, "near": 7656.61, "date": "2026-08-20", "stop": 7842.25, "src": "fvg", "capped": false, "kind": "bear", "dist": 154.65, "dist_atr": 1.01}}, "recommendation": "看多", "lots": 2, "entry": 7587.43, "entry_time": "2026-09-16", "held_bars": 2, "stop_loss": 7610.39, "stop_src": "be", "fvg_stop": 7610.39, "fvg_stop_src": "be", "be_line": 7610.38, "be_hit": true, "risk_pts": 141.38, "entry_adx": 20.84, "entry_lots": 2, "sl_dist": 77.2, "take_profit": null, "risk_reward": null, "exit_rule": "收盘跌回安全线下方 → 离场", "lines": {"safety": {"p": 7497.79, "slope": 18.2234, "slope_pct": 0.2431, "dir": "向上", "touches": 2, "a_date": "2026-07-21", "b_date": "2026-07-30"}, "action": {"p": 7440.77, "slope": -24.1187, "slope_pct": -0.3241, "dir": "向下", "touches": 2, "a_date": "2026-08-18", "b_date": "2026-08-28"}}, "fvg": {"j": 990, "edge": 7118.1, "date": "2026-08-05", "capped": false, "mode": "be", "dist": 569.5, "dist_atr": 3.72, "kind": "bull"}, "lines_safety_p": 7497.79, "lines_action_p": 7440.77, "reasons": [{"t": "ADX=20.1，在 20 以上但未持续上行 → 趋势强弱判定为 中性", "c": ""}, {"t": "开仓于 2026-09-16（破下降趋势线入场），入场 7587.43，已持有 2 根", "c": "pos"}, {"t": "行动线（入场依据）：下降 线，触点 2，现在 已翻到价格下方 位于 7440.77", "c": "pos"}, {"t": "安全线（止损依据）：上升 线，触点 2，现在 7497.79（价格在上方）", "c": "pos"}, {"t": "主线止损 7610.39（距现价 77.20 点）｜风险 141.38 点", "c": ""}, {"t": "分批腿止损 7610.39：来自 2026-08-05 的 FVG 外沿 7118.10", "c": "pos"}, {"t": "保本规则：浮盈 ≥ 0.38R 后止损抬到 7610.38（保本线）（已触发）", "c": ""}, {"t": "离场规则：收盘跌回安全线下方就走；无固定止盈，趋势线不断推进就一路持有", "c": ""}, {"t": "手数：本笔开仓时 ADX=20.8 → 2 手；当下 ADX=20.1（不满足 >20 且上行）若新开仓建议 1 手", "c": ""}], "indicators": {"adx": 20.1, "adx_prev": 20.78, "adx_dir": "下行", "adx_zone": "中性", "adx_hi": false, "atr": 153.097, "atr_pct": 1.99, "lots": 1, "lots_now": 2, "be_trigger_r": 0.38, "n_lines": 308, "n_lines_up": 172, "n_lines_dn": 136, "fvg_max_age": 30, "fvg_cap_atr": 1.0, "kline_bars": 1023}, "regime_now": "RANGE", "regime_dur": 17, "regime_strip": "SSSSSSSSSSSRRRRRRRBBBBBBBBBBBBBBBBBBBBBBBBTTTTTTTTTRRRRTTTTTTTTTTRRRTTTTSSSSSSSSSSSTTTSSSSTTTTTTTTTTTTTRRRRRRRRRRRRRRRRR", "chart": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [7664.636, 7741.959, 7767.883, 7733.747, 7658.821, 7556.277, 7765.55, 7881.803, 7981.622, 7947.222, 8088.05, 8186.074, 8120.358, 8225.729, 8308.055, 8331.592, 8317.278, 8488.996, 8318.597, 8292.811, 8307.692, 8163.348, 8345.247, 8462.023, 8602.146, 8655.127, 8807.905, 8880.415, 8764.023, 8989.487, 8786.382, 8645.763, 8691.384, 8769.097, 8852.434, 8578.9, 8756.458, 8755.908, 8679.536, 8527.909, 8673.798, 8393.518, 8360.807, 8386.858, 8338.854, 8380.852, 8069.482, 8178.823, 8232.024, 8158.46, 8294.897, 8269.397, 8534.27, 8581.65, 8666.638, 8813.725, 8838.763, 8650.816, 8806.071, 8771.598, 8616.424, 8574.25, 8827.47, 8688.291, 8627.382, 8669.123, 8436.389, 8315.962, 8161.859, 8312.492, 8124.363, 7799.813, 7959.374, 7713.135, 7599.388, 7256.267, 6975.893, 7196.863, 7169.543, 7109.248, 6981.165, 7135.735, 7020.223, 7053.09, 7082.754, 7055.271, 7128.494, 7253.225, 7440.008, 7534.242, 7723.38, 7686.042, 7704.959, 7847.238, 7750.987, 7797.184, 7969.374, 7795.259, 7602.498, 7555.548, 7614.889, 7420.767, 7536.374, 7551.443, 7734.191, 7607.234, 7773.055, 7616.234, 7629.65, 7655.971, 7551.021, 7650.065, 7676.863, 7611.521, 7504.663, 7363.418, 7453.474, 7437.819, 7555.79, 7621.239], "h": [7774.851, 7789.239, 7786.759, 7764.027, 7664.756, 7640.505, 7955.768, 7959.067, 8059.755, 8040.026, 8144.762, 8193.296, 8239.008, 8333.222, 8374.812, 8358.124, 8482.153, 8500.438, 8360.79, 8366.312, 8316.267, 8361.487, 8402.356, 8610.881, 8716.861, 8760.194, 8888.873, 8881.902, 8958.456, 8991.85, 8846.515, 8766.306, 8812.031, 8823.684, 8896.6, 8719.387, 8802.946, 8756.463, 8737.055, 8659.61, 8680.266, 8504.983, 8440.232, 8549.249, 8456.017, 8500.1, 8260.192, 8322.109, 8285.286, 8223.527, 8348.786, 8521.233, 8684.65, 8705.403, 8796.485, 8865.815, 8862.719, 8803.501, 8872.123, 8797.282, 8677.63, 8815.108, 8944.195, 8865.966, 8740.668, 8694.805, 8489.476, 8328.965, 8312.621, 8438.194, 8171.504, 7934.103, 7979.077, 7836.39, 7605.613, 7298.122, 7264.338, 7302.454, 7247.141, 7174.552, 7228.785, 7189.177, 7132.352, 7121.523, 7218.061, 7118.097, 7307.171, 7523.498, 7564.692, 7685.57, 7736.102, 7789.21, 7805.272, 7880.217, 7784.377, 7968.383, 7995.501, 7821.177, 7656.613, 7634.084, 7633.336, 7556.066, 7601.838, 7734.309, 7802.551, 7771.551, 7773.055, 7624.713, 7657.745, 7717.929, 7669.84, 7724.938, 7715.077, 7641.858, 7506.235, 7501.139, 7524.615, 7607.891, 7632.535, 7706.898], "l": [7618.961, 7618.187, 7692.01, 7581.392, 7521.944, 7554.408, 7765.197, 7872.475, 7981.622, 7947.222, 8059.38, 8083.265, 8100.489, 8223.706, 8308.055, 8270.161, 8317.278, 8302.849, 8254.431, 8249.944, 8187.239, 8163.348, 8324.294, 8462.023, 8573.295, 8651.059, 8760.714, 8749.722, 8764.023, 8778.709, 8616.06, 8610.742, 8602.046, 8697.4, 8500.92, 8521.695, 8670.716, 8560.804, 8495.723, 8459.949, 8357.801, 8339.353, 8219.153, 8357.464, 8338.854, 8305.396, 7987.396, 8096.577, 8103.01, 8084.9, 8181.417, 8269.397, 8508.908, 8581.65, 8664.278, 8609.611, 8626.101, 8581.751, 8743.249, 8563.695, 8413.864, 8547.312, 8806.646, 8598.869, 8559.285, 8432.897, 8261.398, 8117.861, 7978.806, 8198.308, 7769.292, 7657.671, 7783.219, 7591.421, 7163.309, 6824.145, 6714.187, 7118.66, 7113.498, 6995.693, 6972.282, 6992.944, 6897.392, 6841.751, 7071.048, 7042.889, 7102.46, 7253.225, 7434.494, 7448.459, 7621.65, 7642.437, 7692.438, 7714.367, 7673.441, 7750.433, 7842.246, 7490.212, 7541.475, 7472.495, 7377.724, 7347.953, 7467.414, 7531.784, 7702.179, 7604.946, 7667.335, 7539.083, 7531.675, 7464.975, 7541.142, 7622.899, 7602.497, 7564.666, 7284.534, 7329.602, 7426.901, 7402.374, 7522.77, 7603.373], "c": [7767.93, 7619.85, 7764.153, 7623.417, 7536.6, 7606.017, 7955.768, 7921.447, 7998.232, 8025.572, 8144.762, 8106.165, 8232.983, 8307.436, 8357.814, 8351.156, 8481.24, 8362.74, 8304.141, 8338.726, 8226.692, 8343.065, 8381.947, 8574.556, 8714.51, 8741.151, 8866.779, 8821.887, 8955.447, 8778.709, 8682.654, 8720.213, 8808.645, 8808.91, 8510.496, 8692.666, 8799.312, 8687.253, 8546.514, 8637.743, 8408.736, 8345.129, 8384.781, 8432.679, 8420.095, 8340.963, 8081.261, 8318.698, 8198.723, 8159.455, 8202.799, 8521.233, 8646.403, 8704.468, 8771.024, 8865.676, 8680.039, 8793.487, 8825.92, 8601.408, 8597.893, 8809.786, 8876.63, 8625.334, 8620.789, 8472.603, 8301.804, 8117.861, 8300.077, 8198.308, 7787.853, 7925.123, 7817.831, 7631.762, 7167.996, 6965.376, 7259.863, 7158.762, 7195.5, 6995.693, 7228.785, 7026.276, 7095.186, 6900.658, 7075.507, 7079.776, 7279.193, 7493.048, 7530.425, 7679.529, 7733.9, 7698.048, 7793.717, 7715.895, 7769.82, 7968.383, 7945.964, 7517.768, 7589.779, 7601.804, 7491.49, 7527.498, 7544.67, 7732.945, 7705.029, 7770.422, 7691.369, 7583.756, 7600.097, 7508.092, 7639.361, 7659.607, 7648.798, 7587.752, 7427.241, 7468.299, 7437.703, 7587.427, 7548.822, 7687.594], "lines": [{"k": "dn", "ai": 999, "ap": 7995.501, "s": -24.1187, "t": 2, "role": "action"}, {"k": "up", "ai": 979, "ap": 6714.187, "s": 18.2234, "t": 2, "role": "safe"}, {"k": "dn", "ai": 1007, "ap": 7802.551, "s": -11.0876, "t": 2, "role": ""}, {"k": "up", "ai": 986, "ap": 6841.751, "s": 14.2833, "t": 2, "role": ""}, {"k": "up", "ai": 979, "ap": 6714.187, "s": 15.0091, "t": 3, "role": ""}, {"k": "dn", "ai": 937, "ap": 8896.6, "s": -1.0199, "t": 2, "role": ""}, {"k": "dn", "ai": 932, "ap": 8991.85, "s": -4.1285, "t": 2, "role": ""}, {"k": "dn", "ai": 932, "ap": 8991.85, "s": -1.4441, "t": 2, "role": ""}, {"k": "up", "ai": 717, "ap": 5965.663, "s": 7.6908, "t": 2, "role": "broken", "bi": 70}, {"k": "up", "ai": 746, "ap": 6625.928, "s": 4.8143, "t": 2, "role": "broken", "bi": 73}], "trades": [{"ei": -9, "ep": 8019.86, "xi": 6, "xp": 7765.55, "d": "S", "p": 254.3, "l": 1, "m": 0}, {"ei": 9, "ep": 8025.57, "xi": 34, "xp": 8599.54, "d": "L", "p": 574.0, "l": 1, "m": 0}, {"ei": 38, "ep": 8546.51, "xi": 43, "xp": 8513.72, "d": "S", "p": 32.8, "l": 1, "m": 0}, {"ei": 46, "ep": 8081.26, "xi": 52, "xp": 8610.1, "d": "S", "p": -528.8, "l": 1, "m": 0}, {"ei": 65, "ep": 8472.6, "xi": 69, "xp": 8437.55, "d": "S", "p": 35.1, "l": 1, "m": 0}, {"ei": 73, "ep": 7631.76, "xi": 89, "xp": 7584.91, "d": "S", "p": 93.7, "l": 2, "m": 0}, {"ei": 111, "ep": 7659.61, "xi": 112, "xp": 7648.8, "d": "L", "p": -10.8, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -42.9, -176.2, -176.2, -176.2, -162.1, -162.1, -162.1, 132.8, 71.6, 84.1, 84.1, 93.7, 93.7, 93.7, 93.7, 327.7, 327.7, 337.9, 337.9, 348.2, 358.7, 358.7, 358.7, 485.6, 485.6, 485.6, 380.2, 380.2, 289.0, 289.0, 289.0, 289.0, 289.0, 289.0, 289.0, 1376.0, 1376.0, 1397.9, 1397.9, 1397.9, 1699.7, 1699.7, 1632.6, 1632.6, 1632.6, 1632.6, 1632.6, 2083.7, 1946.6, 1946.6, 2028.3, 2028.3, 1939.3, 1939.3, 1939.3, 1939.3, 3495.0, 3357.9, 3357.9, 3357.9, 3256.4, 3256.4, 3256.4, 3520.5, 3336.2, 3336.2, 3281.7, 3281.7, 3281.7, 3281.7, 3281.7, 3295.4, 3329.2, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3340.0, 3231.2, 2953.4, 2762.3, 2762.3, 2762.3, 2762.3, 3163.4, 3163.4, 3163.4, 3163.4, 3417.7, 3417.7, 3417.7, 3417.7, 3991.7, 4024.5, 3495.6, 3495.6, 3530.7, 3530.7, 3577.5, 3577.5, 3577.5, 3566.7], "eq_n": 1023, "dd": 942.5}, "stats": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 44, "longs": 18, "shorts": 26, "wins": 26, "losses": 18, "win_rate": 59.1, "pf": 2.58, "pnl": 4182.3, "pnl_per_lot": 3566.7, "avg_trade": 95.1, "avg_per_lot": 81.06, "max_dd": 942.5, "max_dd_range": ["2025-02-18", "2025-12-22"], "avg_held": 10.0, "avg_lots": 1.16, "be_hits": 25, "splits": 6, "mr_trades": 0, "best": {"pnl": 1555.6, "date": "2024-09-24", "dir": "long"}, "worst": {"pnl": -528.8, "date": "2026-06-08", "dir": "short"}, "open_pos": "long"}, "chart_reg": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [7664.636, 7741.959, 7767.883, 7733.747, 7658.821, 7556.277, 7765.55, 7881.803, 7981.622, 7947.222, 8088.05, 8186.074, 8120.358, 8225.729, 8308.055, 8331.592, 8317.278, 8488.996, 8318.597, 8292.811, 8307.692, 8163.348, 8345.247, 8462.023, 8602.146, 8655.127, 8807.905, 8880.415, 8764.023, 8989.487, 8786.382, 8645.763, 8691.384, 8769.097, 8852.434, 8578.9, 8756.458, 8755.908, 8679.536, 8527.909, 8673.798, 8393.518, 8360.807, 8386.858, 8338.854, 8380.852, 8069.482, 8178.823, 8232.024, 8158.46, 8294.897, 8269.397, 8534.27, 8581.65, 8666.638, 8813.725, 8838.763, 8650.816, 8806.071, 8771.598, 8616.424, 8574.25, 8827.47, 8688.291, 8627.382, 8669.123, 8436.389, 8315.962, 8161.859, 8312.492, 8124.363, 7799.813, 7959.374, 7713.135, 7599.388, 7256.267, 6975.893, 7196.863, 7169.543, 7109.248, 6981.165, 7135.735, 7020.223, 7053.09, 7082.754, 7055.271, 7128.494, 7253.225, 7440.008, 7534.242, 7723.38, 7686.042, 7704.959, 7847.238, 7750.987, 7797.184, 7969.374, 7795.259, 7602.498, 7555.548, 7614.889, 7420.767, 7536.374, 7551.443, 7734.191, 7607.234, 7773.055, 7616.234, 7629.65, 7655.971, 7551.021, 7650.065, 7676.863, 7611.521, 7504.663, 7363.418, 7453.474, 7437.819, 7555.79, 7621.239], "h": [7774.851, 7789.239, 7786.759, 7764.027, 7664.756, 7640.505, 7955.768, 7959.067, 8059.755, 8040.026, 8144.762, 8193.296, 8239.008, 8333.222, 8374.812, 8358.124, 8482.153, 8500.438, 8360.79, 8366.312, 8316.267, 8361.487, 8402.356, 8610.881, 8716.861, 8760.194, 8888.873, 8881.902, 8958.456, 8991.85, 8846.515, 8766.306, 8812.031, 8823.684, 8896.6, 8719.387, 8802.946, 8756.463, 8737.055, 8659.61, 8680.266, 8504.983, 8440.232, 8549.249, 8456.017, 8500.1, 8260.192, 8322.109, 8285.286, 8223.527, 8348.786, 8521.233, 8684.65, 8705.403, 8796.485, 8865.815, 8862.719, 8803.501, 8872.123, 8797.282, 8677.63, 8815.108, 8944.195, 8865.966, 8740.668, 8694.805, 8489.476, 8328.965, 8312.621, 8438.194, 8171.504, 7934.103, 7979.077, 7836.39, 7605.613, 7298.122, 7264.338, 7302.454, 7247.141, 7174.552, 7228.785, 7189.177, 7132.352, 7121.523, 7218.061, 7118.097, 7307.171, 7523.498, 7564.692, 7685.57, 7736.102, 7789.21, 7805.272, 7880.217, 7784.377, 7968.383, 7995.501, 7821.177, 7656.613, 7634.084, 7633.336, 7556.066, 7601.838, 7734.309, 7802.551, 7771.551, 7773.055, 7624.713, 7657.745, 7717.929, 7669.84, 7724.938, 7715.077, 7641.858, 7506.235, 7501.139, 7524.615, 7607.891, 7632.535, 7706.898], "l": [7618.961, 7618.187, 7692.01, 7581.392, 7521.944, 7554.408, 7765.197, 7872.475, 7981.622, 7947.222, 8059.38, 8083.265, 8100.489, 8223.706, 8308.055, 8270.161, 8317.278, 8302.849, 8254.431, 8249.944, 8187.239, 8163.348, 8324.294, 8462.023, 8573.295, 8651.059, 8760.714, 8749.722, 8764.023, 8778.709, 8616.06, 8610.742, 8602.046, 8697.4, 8500.92, 8521.695, 8670.716, 8560.804, 8495.723, 8459.949, 8357.801, 8339.353, 8219.153, 8357.464, 8338.854, 8305.396, 7987.396, 8096.577, 8103.01, 8084.9, 8181.417, 8269.397, 8508.908, 8581.65, 8664.278, 8609.611, 8626.101, 8581.751, 8743.249, 8563.695, 8413.864, 8547.312, 8806.646, 8598.869, 8559.285, 8432.897, 8261.398, 8117.861, 7978.806, 8198.308, 7769.292, 7657.671, 7783.219, 7591.421, 7163.309, 6824.145, 6714.187, 7118.66, 7113.498, 6995.693, 6972.282, 6992.944, 6897.392, 6841.751, 7071.048, 7042.889, 7102.46, 7253.225, 7434.494, 7448.459, 7621.65, 7642.437, 7692.438, 7714.367, 7673.441, 7750.433, 7842.246, 7490.212, 7541.475, 7472.495, 7377.724, 7347.953, 7467.414, 7531.784, 7702.179, 7604.946, 7667.335, 7539.083, 7531.675, 7464.975, 7541.142, 7622.899, 7602.497, 7564.666, 7284.534, 7329.602, 7426.901, 7402.374, 7522.77, 7603.373], "c": [7767.93, 7619.85, 7764.153, 7623.417, 7536.6, 7606.017, 7955.768, 7921.447, 7998.232, 8025.572, 8144.762, 8106.165, 8232.983, 8307.436, 8357.814, 8351.156, 8481.24, 8362.74, 8304.141, 8338.726, 8226.692, 8343.065, 8381.947, 8574.556, 8714.51, 8741.151, 8866.779, 8821.887, 8955.447, 8778.709, 8682.654, 8720.213, 8808.645, 8808.91, 8510.496, 8692.666, 8799.312, 8687.253, 8546.514, 8637.743, 8408.736, 8345.129, 8384.781, 8432.679, 8420.095, 8340.963, 8081.261, 8318.698, 8198.723, 8159.455, 8202.799, 8521.233, 8646.403, 8704.468, 8771.024, 8865.676, 8680.039, 8793.487, 8825.92, 8601.408, 8597.893, 8809.786, 8876.63, 8625.334, 8620.789, 8472.603, 8301.804, 8117.861, 8300.077, 8198.308, 7787.853, 7925.123, 7817.831, 7631.762, 7167.996, 6965.376, 7259.863, 7158.762, 7195.5, 6995.693, 7228.785, 7026.276, 7095.186, 6900.658, 7075.507, 7079.776, 7279.193, 7493.048, 7530.425, 7679.529, 7733.9, 7698.048, 7793.717, 7715.895, 7769.82, 7968.383, 7945.964, 7517.768, 7589.779, 7601.804, 7491.49, 7527.498, 7544.67, 7732.945, 7705.029, 7770.422, 7691.369, 7583.756, 7600.097, 7508.092, 7639.361, 7659.607, 7648.798, 7587.752, 7427.241, 7468.299, 7437.703, 7587.427, 7548.822, 7687.594], "lines": [{"k": "up", "ai": 979, "ap": 6714.187, "s": 18.2234, "t": 2, "role": "pend"}, {"k": "dn", "ai": 932, "ap": 8991.85, "s": -4.1285, "t": 2, "role": "pend"}, {"k": "dn", "ai": 1007, "ap": 7802.551, "s": -11.0876, "t": 2, "role": ""}, {"k": "up", "ai": 986, "ap": 6841.751, "s": 14.2833, "t": 2, "role": ""}, {"k": "up", "ai": 979, "ap": 6714.187, "s": 15.0091, "t": 3, "role": ""}, {"k": "dn", "ai": 937, "ap": 8896.6, "s": -1.0199, "t": 2, "role": ""}, {"k": "dn", "ai": 932, "ap": 8991.85, "s": -1.4441, "t": 2, "role": ""}, {"k": "up", "ai": 682, "ap": 5836.031, "s": 3.7038, "t": 2, "role": ""}, {"k": "up", "ai": 717, "ap": 5965.663, "s": 7.6908, "t": 2, "role": "broken", "bi": 70}, {"k": "up", "ai": 746, "ap": 6625.928, "s": 4.8143, "t": 2, "role": "broken", "bi": 73}], "trades": [{"ei": -9, "ep": 8019.86, "xi": 6, "xp": 7765.55, "d": "S", "p": 254.3, "l": 1, "m": 0}, {"ei": 9, "ep": 8025.57, "xi": 34, "xp": 8599.54, "d": "L", "p": 574.0, "l": 1, "m": 0}, {"ei": 38, "ep": 8546.51, "xi": 43, "xp": 8513.72, "d": "S", "p": 32.8, "l": 1, "m": 0}, {"ei": 46, "ep": 8081.26, "xi": 52, "xp": 8610.1, "d": "S", "p": -528.8, "l": 1, "m": 0}, {"ei": 70, "ep": 7787.85, "xi": 91, "xp": 7741.0, "d": "S", "p": 93.7, "l": 2, "m": 0}, {"ei": 106, "ep": 7691.37, "xi": 108, "xp": 7544.81, "d": "S", "p": 146.6, "l": 1, "m": 1}, {"ei": 112, "ep": 7648.8, "xi": 114, "xp": 7466.62, "d": "L", "p": -182.2, "l": 1, "m": 1}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -42.9, -176.2, -176.2, -176.2, -162.1, -162.1, -162.1, 49.1, -12.1, 0.4, 0.4, 10.0, 10.0, 10.0, 10.0, -46.7, -46.7, -36.5, -36.5, -26.2, -15.8, -15.8, -15.8, -15.8, -15.8, -15.8, -121.1, -121.1, -212.3, -212.3, -212.3, -212.3, -212.3, -212.3, -212.3, 874.7, 874.7, 896.5, 896.5, 896.5, 1198.4, 1198.4, 1262.3, 1262.3, 1262.3, 1262.3, 1262.3, 1713.5, 1576.3, 1576.3, 1658.1, 1658.1, 1569.1, 1569.1, 1569.1, 1569.1, 3124.8, 2987.7, 2987.7, 2987.7, 2886.2, 2886.2, 2886.2, 3150.3, 2966.0, 2966.0, 3140.6, 3140.6, 3140.6, 3140.6, 3140.6, 3154.3, 3188.1, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3198.9, 3294.2, 3181.8, 3181.8, 3181.8, 3181.8, 3181.8, 3181.8, 3408.4, 3408.4, 3408.4, 3408.4, 3662.7, 3662.7, 3662.7, 3662.7, 4236.7, 4269.5, 3740.7, 3740.7, 3740.7, 3740.7, 3787.5, 3787.5, 3934.1, 3751.9], "eq_n": 1023, "dd": 528.8}, "stats_reg": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 42, "longs": 16, "shorts": 26, "wins": 27, "losses": 15, "win_rate": 64.3, "pf": 2.73, "pnl": 4081.6, "pnl_per_lot": 3751.9, "avg_trade": 97.2, "avg_per_lot": 89.33, "max_dd": 528.8, "max_dd_range": ["2026-06-03", "2026-06-16"], "avg_held": 9.5, "avg_lots": 1.17, "be_hits": 22, "splits": 7, "mr_trades": 6, "best": {"pnl": 1555.6, "date": "2024-09-24", "dir": "long"}, "worst": {"pnl": -528.8, "date": "2026-06-08", "dir": "short"}, "open_pos": null}}, {"name": "创业板指", "code": "sz399006", "period": "日线", "price": 3372.68, "prev_close": 3298.31, "provisional": false, "bar_state": "已收盘", "chg_pct": 2.25, "atr": 81.347, "atr_pct": 2.41, "adx": 21.27, "adx_prev": 21.74, "adx_rising": false, "adx_dir": "下行", "adx_dir_tag": "中", "trend": "中性", "strength": "中", "adx_hi": false, "lots_suggest": 1, "cooldown_bars": 2, "be_trigger_r": 0.38, "be_offset_atr": 0.15, "strategy": "tori策略（Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本）", "fvg_cand": {"long": null, "short": {"j": 1001, "edge": 3662.45, "near": 3531.92, "date": "2026-08-20", "stop": 3570.38, "src": "fvg_capped_beyond", "capped": true, "kind": "bear", "dist": 289.77, "dist_atr": 3.56}}, "recommendation": "中性", "lots": 0, "entry": 3372.68, "stop_loss": null, "stop_src": null, "fvg_stop": null, "fvg_stop_src": null, "be_line": null, "be_hit": false, "risk_pts": null, "sl_dist": null, "take_profit": null, "risk_reward": null, "exit_rule": null, "lines": {"safety_long": {"p": 3258.59, "slope": 1.0948, "slope_pct": 0.0336, "dir": "向上", "touches": 3, "a_date": "2026-03-09", "b_date": "2026-04-07"}, "safety_short": {"p": 3480.89, "slope": -11.5928, "slope_pct": -0.333, "dir": "向下", "touches": 2, "a_date": "2026-07-10", "b_date": "2026-08-18"}, "pend_long": {"p": 3480.89, "slope": -11.5928, "slope_pct": -0.333, "dir": "向下", "touches": 2, "a_date": "2026-07-10", "b_date": "2026-08-18"}, "pend_short": {"p": 3258.59, "slope": 1.0948, "slope_pct": 0.0336, "dir": "向上", "touches": 3, "a_date": "2026-03-09", "b_date": "2026-04-07"}}, "fvg": null, "reasons": [{"t": "ADX=21.3，在 20 以上但未持续上行 → 趋势强弱判定为 中性", "c": ""}, {"t": "当前空仓 → 判为<b>中性</b>：没有多单也没有空单，不预判方向", "c": ""}, {"t": "若收盘<b>向上突破</b> 3480.89（一条下降趋势线，触点 2）→ 触发做多信号", "c": "pos"}, {"t": "若收盘<b>向下跌破</b> 3258.59（一条上升趋势线，触点 3）→ 触发做空信号", "c": "neg"}, {"t": "已备好安全线：做多 3258.59 ｜ 做空 3480.89", "c": ""}, {"t": "若触发进场，按当前 ADX 状态建议 <b>1 手</b>（ADX 21.3，不满足 >20 且上行）", "c": ""}], "indicators": {"adx": 21.27, "adx_prev": 21.74, "adx_dir": "下行", "adx_zone": "中性", "adx_hi": false, "atr": 81.347, "atr_pct": 2.41, "lots": 1, "lots_now": 0, "be_trigger_r": 0.38, "n_lines": 368, "n_lines_up": 147, "n_lines_dn": 221, "fvg_max_age": 30, "fvg_cap_atr": 1.0, "kline_bars": 1023}, "regime_now": "BEAR", "regime_dur": 17, "regime_strip": "RRRRRRTTTTTTTTTTBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBTTTBBBBBBBBBBBBBBRRTTTTTTTTSSSSSSSSSSSSSTTTTRRRRRTTTTSSSSSSSSSSSSSSSSS", "chart": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [3254.431, 3247.279, 3255.264, 3229.6, 3197.771, 3162.823, 3257.906, 3316.291, 3355.073, 3434.32, 3507.11, 3596.079, 3531.261, 3643.153, 3657.348, 3662.259, 3660.42, 3769.019, 3682.499, 3677.89, 3623.49, 3578.423, 3704.109, 3760.671, 3807.99, 3792.042, 3829.608, 3947.137, 3900.737, 4087.851, 3957.738, 3895.068, 3894.001, 3889.679, 3962.303, 3875.813, 3974.975, 4003.133, 4053.675, 4042.078, 4141.914, 4057.393, 3987.406, 4089.02, 4072.549, 4079.952, 3820.231, 3865.693, 3897.73, 3839.187, 3921.089, 3896.167, 4065.271, 4061.297, 4153.621, 4272.988, 4343.875, 4181.906, 4278.339, 4319.409, 4200.674, 4217.633, 4336.161, 4135.342, 4010.819, 4050.876, 3931.439, 3932.42, 3892.123, 4041.859, 3809.858, 3729.613, 3879.766, 3710.507, 3642.057, 3504.116, 3469.223, 3644.976, 3596.735, 3515.504, 3482.045, 3478.864, 3333.481, 3331.321, 3411.612, 3320.093, 3353.512, 3372.082, 3472.146, 3537.44, 3567.046, 3533.894, 3542.133, 3656.876, 3610.194, 3632.777, 3730.987, 3605.518, 3517.652, 3495.113, 3550.249, 3403.198, 3409.279, 3437.901, 3453.729, 3367.043, 3435.321, 3347.675, 3342.092, 3344.621, 3326.417, 3394.346, 3398.222, 3324.333, 3310.013, 3279.307, 3280.855, 3246.887, 3297.31, 3351.559], "h": [3281.393, 3280.479, 3255.264, 3229.679, 3199.438, 3181.351, 3348.392, 3340.298, 3470.719, 3492.482, 3560.302, 3599.979, 3629.422, 3685.098, 3696.26, 3695.742, 3755.751, 3785.23, 3699.939, 3686.943, 3636.934, 3692.206, 3718.399, 3815.07, 3840.055, 3840.156, 3937.874, 3954.991, 4041.989, 4090.422, 4002.727, 3961.156, 3918.307, 3947.22, 4017.809, 3948.989, 4022.737, 4057.369, 4148.234, 4135.375, 4158.694, 4081.418, 4083.925, 4218.331, 4114.237, 4105.21, 3903.774, 3962.898, 3928.36, 3910.278, 3921.535, 4033.535, 4142.433, 4168.165, 4272.008, 4359.392, 4350.063, 4257.25, 4380.413, 4328.7, 4265.463, 4353.105, 4361.825, 4168.873, 4115.628, 4063.631, 3976.114, 3965.388, 4025.316, 4060.533, 3855.753, 3855.035, 3905.312, 3796.346, 3642.057, 3550.594, 3687.147, 3694.9, 3621.728, 3561.35, 3592.1, 3511.7, 3411.032, 3353.81, 3464.897, 3342.173, 3510.512, 3584.062, 3574.406, 3613.871, 3575.589, 3601.59, 3625.268, 3681.799, 3633.034, 3740.157, 3747.528, 3622.503, 3531.923, 3563.059, 3551.508, 3440.65, 3455.888, 3474.069, 3521.469, 3438.681, 3442.477, 3348.693, 3356.246, 3370.468, 3409.365, 3418.485, 3398.222, 3368.733, 3335.814, 3331.054, 3315.33, 3327.557, 3351.421, 3398.158], "l": [3224.599, 3184.952, 3206.802, 3155.13, 3149.153, 3133.779, 3243.782, 3301.646, 3354.765, 3434.32, 3493.368, 3491.451, 3518.358, 3620.328, 3642.807, 3619.485, 3660.085, 3681.571, 3624.995, 3640.115, 3580.389, 3578.423, 3660.219, 3724.527, 3761.232, 3787.174, 3797.498, 3897.817, 3893.803, 3937.601, 3870.374, 3883.405, 3808.47, 3887.155, 3827.516, 3856.207, 3905.695, 3985.513, 4015.65, 3971.719, 4010.119, 3942.683, 3946.108, 4063.205, 4051.146, 3933.065, 3776.927, 3823.76, 3818.312, 3755.613, 3822.422, 3844.08, 4053.878, 4058.614, 4153.621, 4229.315, 4159.476, 4161.581, 4242.863, 4175.377, 4103.633, 4205.742, 4222.223, 3999.567, 3985.363, 3903.478, 3859.426, 3824.33, 3812.655, 3842.347, 3691.232, 3673.958, 3794.344, 3658.068, 3387.26, 3338.213, 3373.04, 3553.367, 3538.106, 3480.87, 3449.205, 3312.305, 3249.647, 3158.139, 3343.964, 3280.843, 3342.406, 3372.042, 3444.358, 3507.615, 3470.953, 3517.572, 3540.948, 3585.272, 3578.614, 3604.166, 3662.448, 3455.478, 3459.569, 3478.517, 3376.639, 3359.735, 3379.142, 3408.801, 3423.074, 3359.135, 3375.013, 3296.475, 3285.058, 3266.796, 3320.265, 3346.714, 3327.137, 3308.705, 3261.1, 3262.486, 3245.059, 3227.181, 3293.933, 3313.208], "c": [3273.355, 3184.952, 3247.523, 3172.649, 3149.596, 3160.816, 3347.61, 3323.299, 3448.787, 3476.44, 3558.527, 3514.96, 3626.271, 3678.293, 3677.576, 3688.937, 3752.759, 3720.247, 3667.785, 3648.788, 3596.712, 3687.168, 3677.148, 3778.159, 3833.057, 3796.128, 3928.974, 3934.882, 4038.333, 3951.14, 3929.064, 3914.875, 3908.438, 3921.789, 3829.779, 3938.502, 4021.16, 4043.066, 4045.773, 4125.075, 4037.951, 3950.943, 4055.871, 4122.987, 4088.884, 3957.935, 3811.785, 3961.749, 3854.793, 3811.246, 3830.353, 4033.535, 4102.942, 4167.048, 4252.39, 4359.392, 4192.194, 4251.424, 4371.989, 4194.209, 4216.699, 4342.712, 4260.721, 4017.273, 4019.934, 3948.86, 3911.907, 3845.351, 4018.174, 3842.731, 3723.517, 3851.137, 3804.704, 3692.457, 3428.63, 3443.102, 3685.969, 3566.732, 3575.52, 3480.87, 3590.787, 3327.03, 3378.696, 3244.618, 3343.964, 3302.553, 3488.966, 3535.143, 3515.56, 3563.116, 3537.214, 3549.164, 3602.083, 3586.043, 3626.296, 3740.157, 3705.564, 3473.493, 3495.589, 3545.577, 3431.885, 3397.515, 3414.883, 3473.355, 3424.401, 3438.681, 3393.43, 3312.243, 3312.541, 3286.546, 3398.681, 3359.716, 3354.969, 3338.422, 3322.039, 3285.583, 3247.918, 3311.474, 3298.31, 3372.676], "lines": [{"k": "dn", "ai": 972, "ap": 4060.533, "s": -11.5928, "t": 2, "role": "pend"}, {"k": "up", "ai": 888, "ap": 3111.883, "s": 1.0948, "t": 3, "role": "pend"}, {"k": "dn", "ai": 961, "ap": 4380.413, "s": -4.647, "t": 2, "role": ""}, {"k": "dn", "ai": 961, "ap": 4380.413, "s": -16.6549, "t": 3, "role": ""}, {"k": "up", "ai": 908, "ap": 3133.779, "s": 0.3123, "t": 2, "role": ""}, {"k": "up", "ai": 899, "ap": 3155.271, "s": 0.033, "t": 3, "role": ""}, {"k": "up", "ai": 888, "ap": 3111.883, "s": 0.472, "t": 3, "role": ""}, {"k": "up", "ai": 837, "ap": 3058.792, "s": 1.041, "t": 2, "role": ""}, {"k": "up", "ai": 821, "ap": 2892.274, "s": 1.9608, "t": 3, "role": "broken", "bi": 116}, {"k": "up", "ai": 717, "ap": 1996.962, "s": 5.9519, "t": 2, "role": "broken", "bi": 74}], "trades": [{"ei": 1, "ep": 3184.95, "xi": 6, "xp": 3257.91, "d": "S", "p": -73.0, "l": 1, "m": 0}, {"ei": 66, "ep": 3911.91, "xi": 72, "xp": 3887.44, "d": "S", "p": 24.5, "l": 1, "m": 0}, {"ei": 81, "ep": 3327.03, "xi": 84, "xp": 3411.61, "d": "S", "p": -169.2, "l": 2, "m": 0}, {"ei": 107, "ep": 3312.24, "xi": 110, "xp": 3390.23, "d": "S", "p": -78.0, "l": 1, "m": 0}, {"ei": 115, "ep": 3285.58, "xi": 117, "xp": 3273.54, "d": "S", "p": 12.0, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -34.2, -34.2, -10.9, -10.9, -10.9, -10.9, -10.9, 179.9, 179.9, 179.9, 167.3, 211.9, 211.9, 365.4, 365.4, 371.5, 371.5, 371.5, 318.4, 322.6, 322.6, 325.6, 276.2, 276.2, 276.2, 242.5, 242.5, 242.5, 242.5, 242.5, 242.5, 247.1, 247.1, 290.3, 290.3, 290.3, 290.3, 290.3, 273.2, 273.2, 278.2, 278.2, 303.5, 303.5, 307.9, 307.9, 307.9, 334.7, 334.7, 334.7, 402.6, 402.6, 367.7, 367.7, 367.7, 367.7, 943.2, 943.2, 897.3, 897.3, 879.6, 879.6, 879.6, 879.6, 1015.8, 956.6, 956.6, 956.6, 956.6, 1161.7, 1161.7, 1161.7, 1154.4, 1156.5, 1156.5, 1156.5, 1156.5, 1336.1, 1336.1, 1336.1, 1336.1, 1336.1, 1336.1, 1336.1, 1336.1, 1348.1, 1348.1, 1404.6, 1404.6, 1498.3, 1498.3, 1435.6, 1446.6, 1419.9, 1238.6, 1165.6, 1165.6, 1165.6, 1165.6, 1165.6, 1165.6, 1165.6, 1165.6, 1190.1, 1105.5, 1105.5, 1105.5, 1027.5, 1039.6], "eq_n": 1023, "dd": 555.4}, "stats": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 43, "longs": 17, "shorts": 26, "wins": 26, "losses": 17, "win_rate": 60.5, "pf": 2.02, "pnl": 996.2, "pnl_per_lot": 1039.6, "avg_trade": 23.2, "avg_per_lot": 24.18, "max_dd": 555.4, "max_dd_range": ["2026-01-19", "2026-09-07"], "avg_held": 9.1, "avg_lots": 1.12, "be_hits": 28, "splits": 5, "mr_trades": 0, "best": {"pnl": 575.4, "date": "2024-09-24", "dir": "long"}, "worst": {"pnl": -181.3, "date": "2026-03-11", "dir": "long"}, "open_pos": null}, "chart_reg": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [3254.431, 3247.279, 3255.264, 3229.6, 3197.771, 3162.823, 3257.906, 3316.291, 3355.073, 3434.32, 3507.11, 3596.079, 3531.261, 3643.153, 3657.348, 3662.259, 3660.42, 3769.019, 3682.499, 3677.89, 3623.49, 3578.423, 3704.109, 3760.671, 3807.99, 3792.042, 3829.608, 3947.137, 3900.737, 4087.851, 3957.738, 3895.068, 3894.001, 3889.679, 3962.303, 3875.813, 3974.975, 4003.133, 4053.675, 4042.078, 4141.914, 4057.393, 3987.406, 4089.02, 4072.549, 4079.952, 3820.231, 3865.693, 3897.73, 3839.187, 3921.089, 3896.167, 4065.271, 4061.297, 4153.621, 4272.988, 4343.875, 4181.906, 4278.339, 4319.409, 4200.674, 4217.633, 4336.161, 4135.342, 4010.819, 4050.876, 3931.439, 3932.42, 3892.123, 4041.859, 3809.858, 3729.613, 3879.766, 3710.507, 3642.057, 3504.116, 3469.223, 3644.976, 3596.735, 3515.504, 3482.045, 3478.864, 3333.481, 3331.321, 3411.612, 3320.093, 3353.512, 3372.082, 3472.146, 3537.44, 3567.046, 3533.894, 3542.133, 3656.876, 3610.194, 3632.777, 3730.987, 3605.518, 3517.652, 3495.113, 3550.249, 3403.198, 3409.279, 3437.901, 3453.729, 3367.043, 3435.321, 3347.675, 3342.092, 3344.621, 3326.417, 3394.346, 3398.222, 3324.333, 3310.013, 3279.307, 3280.855, 3246.887, 3297.31, 3351.559], "h": [3281.393, 3280.479, 3255.264, 3229.679, 3199.438, 3181.351, 3348.392, 3340.298, 3470.719, 3492.482, 3560.302, 3599.979, 3629.422, 3685.098, 3696.26, 3695.742, 3755.751, 3785.23, 3699.939, 3686.943, 3636.934, 3692.206, 3718.399, 3815.07, 3840.055, 3840.156, 3937.874, 3954.991, 4041.989, 4090.422, 4002.727, 3961.156, 3918.307, 3947.22, 4017.809, 3948.989, 4022.737, 4057.369, 4148.234, 4135.375, 4158.694, 4081.418, 4083.925, 4218.331, 4114.237, 4105.21, 3903.774, 3962.898, 3928.36, 3910.278, 3921.535, 4033.535, 4142.433, 4168.165, 4272.008, 4359.392, 4350.063, 4257.25, 4380.413, 4328.7, 4265.463, 4353.105, 4361.825, 4168.873, 4115.628, 4063.631, 3976.114, 3965.388, 4025.316, 4060.533, 3855.753, 3855.035, 3905.312, 3796.346, 3642.057, 3550.594, 3687.147, 3694.9, 3621.728, 3561.35, 3592.1, 3511.7, 3411.032, 3353.81, 3464.897, 3342.173, 3510.512, 3584.062, 3574.406, 3613.871, 3575.589, 3601.59, 3625.268, 3681.799, 3633.034, 3740.157, 3747.528, 3622.503, 3531.923, 3563.059, 3551.508, 3440.65, 3455.888, 3474.069, 3521.469, 3438.681, 3442.477, 3348.693, 3356.246, 3370.468, 3409.365, 3418.485, 3398.222, 3368.733, 3335.814, 3331.054, 3315.33, 3327.557, 3351.421, 3398.158], "l": [3224.599, 3184.952, 3206.802, 3155.13, 3149.153, 3133.779, 3243.782, 3301.646, 3354.765, 3434.32, 3493.368, 3491.451, 3518.358, 3620.328, 3642.807, 3619.485, 3660.085, 3681.571, 3624.995, 3640.115, 3580.389, 3578.423, 3660.219, 3724.527, 3761.232, 3787.174, 3797.498, 3897.817, 3893.803, 3937.601, 3870.374, 3883.405, 3808.47, 3887.155, 3827.516, 3856.207, 3905.695, 3985.513, 4015.65, 3971.719, 4010.119, 3942.683, 3946.108, 4063.205, 4051.146, 3933.065, 3776.927, 3823.76, 3818.312, 3755.613, 3822.422, 3844.08, 4053.878, 4058.614, 4153.621, 4229.315, 4159.476, 4161.581, 4242.863, 4175.377, 4103.633, 4205.742, 4222.223, 3999.567, 3985.363, 3903.478, 3859.426, 3824.33, 3812.655, 3842.347, 3691.232, 3673.958, 3794.344, 3658.068, 3387.26, 3338.213, 3373.04, 3553.367, 3538.106, 3480.87, 3449.205, 3312.305, 3249.647, 3158.139, 3343.964, 3280.843, 3342.406, 3372.042, 3444.358, 3507.615, 3470.953, 3517.572, 3540.948, 3585.272, 3578.614, 3604.166, 3662.448, 3455.478, 3459.569, 3478.517, 3376.639, 3359.735, 3379.142, 3408.801, 3423.074, 3359.135, 3375.013, 3296.475, 3285.058, 3266.796, 3320.265, 3346.714, 3327.137, 3308.705, 3261.1, 3262.486, 3245.059, 3227.181, 3293.933, 3313.208], "c": [3273.355, 3184.952, 3247.523, 3172.649, 3149.596, 3160.816, 3347.61, 3323.299, 3448.787, 3476.44, 3558.527, 3514.96, 3626.271, 3678.293, 3677.576, 3688.937, 3752.759, 3720.247, 3667.785, 3648.788, 3596.712, 3687.168, 3677.148, 3778.159, 3833.057, 3796.128, 3928.974, 3934.882, 4038.333, 3951.14, 3929.064, 3914.875, 3908.438, 3921.789, 3829.779, 3938.502, 4021.16, 4043.066, 4045.773, 4125.075, 4037.951, 3950.943, 4055.871, 4122.987, 4088.884, 3957.935, 3811.785, 3961.749, 3854.793, 3811.246, 3830.353, 4033.535, 4102.942, 4167.048, 4252.39, 4359.392, 4192.194, 4251.424, 4371.989, 4194.209, 4216.699, 4342.712, 4260.721, 4017.273, 4019.934, 3948.86, 3911.907, 3845.351, 4018.174, 3842.731, 3723.517, 3851.137, 3804.704, 3692.457, 3428.63, 3443.102, 3685.969, 3566.732, 3575.52, 3480.87, 3590.787, 3327.03, 3378.696, 3244.618, 3343.964, 3302.553, 3488.966, 3535.143, 3515.56, 3563.116, 3537.214, 3549.164, 3602.083, 3586.043, 3626.296, 3740.157, 3705.564, 3473.493, 3495.589, 3545.577, 3431.885, 3397.515, 3414.883, 3473.355, 3424.401, 3438.681, 3393.43, 3312.243, 3312.541, 3286.546, 3398.681, 3359.716, 3354.969, 3338.422, 3322.039, 3285.583, 3247.918, 3311.474, 3298.31, 3372.676], "lines": [{"k": "dn", "ai": 972, "ap": 4060.533, "s": -11.5928, "t": 2, "role": "pend"}, {"k": "up", "ai": 888, "ap": 3111.883, "s": 1.0948, "t": 3, "role": "pend"}, {"k": "dn", "ai": 961, "ap": 4380.413, "s": -4.647, "t": 2, "role": ""}, {"k": "dn", "ai": 961, "ap": 4380.413, "s": -16.6549, "t": 3, "role": ""}, {"k": "up", "ai": 908, "ap": 3133.779, "s": 0.3123, "t": 2, "role": ""}, {"k": "up", "ai": 899, "ap": 3155.271, "s": 0.033, "t": 3, "role": ""}, {"k": "up", "ai": 888, "ap": 3111.883, "s": 0.472, "t": 3, "role": ""}, {"k": "up", "ai": 837, "ap": 3058.792, "s": 1.041, "t": 2, "role": ""}, {"k": "up", "ai": 821, "ap": 2892.274, "s": 1.9608, "t": 3, "role": "broken", "bi": 116}, {"k": "up", "ai": 717, "ap": 1996.962, "s": 5.9519, "t": 2, "role": "broken", "bi": 74}], "trades": [{"ei": 1, "ep": 3184.95, "xi": 6, "xp": 3257.91, "d": "L", "p": 73.0, "l": 1, "m": 1}, {"ei": 66, "ep": 3911.91, "xi": 72, "xp": 3887.44, "d": "S", "p": 24.5, "l": 1, "m": 0}, {"ei": 81, "ep": 3327.03, "xi": 84, "xp": 3411.61, "d": "S", "p": -169.2, "l": 2, "m": 0}, {"ei": 107, "ep": 3312.24, "xi": 110, "xp": 3390.23, "d": "S", "p": -78.0, "l": 1, "m": 0}, {"ei": 115, "ep": 3285.58, "xi": 117, "xp": 3273.54, "d": "S", "p": 12.0, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 23.3, 131.5, 131.5, 131.5, 131.5, 322.2, 322.2, 322.2, 309.6, 354.2, 354.2, 507.8, 507.8, 513.8, 513.8, 513.8, 513.8, 513.8, 513.8, 516.8, 516.8, 516.8, 516.8, 483.2, 483.2, 483.2, 483.2, 483.2, 483.2, 487.7, 487.7, 531.0, 531.0, 531.0, 531.0, 531.0, 513.8, 513.8, 518.9, 518.9, 544.2, 544.2, 548.6, 548.6, 548.6, 575.3, 575.3, 575.3, 643.2, 643.2, 608.4, 608.4, 608.4, 608.4, 1183.8, 1183.8, 1137.9, 1137.9, 1120.2, 1120.2, 1120.2, 1120.2, 1256.4, 1197.3, 1197.3, 1197.3, 1197.3, 1402.4, 1402.4, 1402.4, 1395.0, 1364.1, 1364.1, 1364.1, 1364.1, 1543.7, 1543.7, 1543.7, 1543.7, 1543.7, 1543.7, 1543.7, 1543.7, 1555.7, 1555.7, 1612.2, 1612.2, 1612.2, 1612.2, 1549.4, 1605.3, 1605.3, 1424.0, 1496.9, 1496.9, 1496.9, 1496.9, 1496.9, 1496.9, 1496.9, 1496.9, 1521.4, 1436.8, 1436.8, 1436.8, 1358.8, 1370.9], "eq_n": 1023, "dd": 337.9}, "stats_reg": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 38, "longs": 17, "shorts": 21, "wins": 25, "losses": 13, "win_rate": 65.8, "pf": 2.72, "pnl": 1327.5, "pnl_per_lot": 1370.9, "avg_trade": 34.9, "avg_per_lot": 36.08, "max_dd": 337.9, "max_dd_range": ["2025-12-16", "2026-09-07"], "avg_held": 9.5, "avg_lots": 1.13, "be_hits": 22, "splits": 5, "mr_trades": 4, "best": {"pnl": 575.4, "date": "2024-09-24", "dir": "long"}, "worst": {"pnl": -181.3, "date": "2026-03-11", "dir": "long"}, "open_pos": null}}, {"name": "上证指数", "code": "sh000001", "period": "日线", "price": 3911.87, "prev_close": 3875.6, "provisional": false, "bar_state": "已收盘", "chg_pct": 0.94, "atr": 39.115, "atr_pct": 1.0, "adx": 22.47, "adx_prev": 22.09, "adx_rising": true, "adx_dir": "上行", "adx_dir_tag": "强", "trend": "中性", "strength": "中", "adx_hi": true, "lots_suggest": 2, "cooldown_bars": 2, "be_trigger_r": 0.38, "be_offset_atr": 0.15, "strategy": "tori策略（Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本）", "fvg_cand": {"long": null, "short": {"j": 1018, "edge": 3927.35, "near": 3895.51, "date": "2026-09-14", "stop": 3927.35, "src": "fvg", "capped": false, "kind": "bear", "dist": 15.48, "dist_atr": 0.4}}, "recommendation": "中性", "lots": 0, "entry": 3911.87, "stop_loss": null, "stop_src": null, "fvg_stop": null, "fvg_stop_src": null, "be_line": null, "be_hit": false, "risk_pts": null, "sl_dist": null, "take_profit": null, "risk_reward": null, "exit_rule": null, "lines": {"safety_long": {"p": 3886.27, "slope": 3.2991, "slope_pct": 0.0849, "dir": "向上", "touches": 2, "a_date": "2026-07-20", "b_date": "2026-07-30"}, "safety_short": {"p": 3943.73, "slope": -3.5015, "slope_pct": -0.0888, "dir": "向下", "touches": 3, "a_date": "2026-05-14", "b_date": "2026-07-01"}, "pend_long": {"p": 3943.73, "slope": -3.5015, "slope_pct": -0.0888, "dir": "向下", "touches": 3, "a_date": "2026-05-14", "b_date": "2026-07-01"}, "pend_short": {"p": 3886.27, "slope": 3.2991, "slope_pct": 0.0849, "dir": "向上", "touches": 2, "a_date": "2026-07-20", "b_date": "2026-07-30"}}, "fvg": null, "reasons": [{"t": "ADX=22.5，站上 20 且持续上行 → 趋势强弱判定为 中性", "c": ""}, {"t": "当前空仓 → 判为<b>中性</b>：没有多单也没有空单，不预判方向", "c": ""}, {"t": "若收盘<b>向上突破</b> 3943.73（一条下降趋势线，触点 3）→ 触发做多信号", "c": "pos"}, {"t": "若收盘<b>向下跌破</b> 3886.27（一条上升趋势线，触点 2）→ 触发做空信号", "c": "neg"}, {"t": "已备好安全线：做多 3886.27 ｜ 做空 3943.73", "c": ""}, {"t": "若触发进场，按当前 ADX 状态建议 <b>2 手</b>（ADX 22.5，满足 >20 且上行）", "c": ""}], "indicators": {"adx": 22.47, "adx_prev": 22.09, "adx_dir": "上行", "adx_zone": "中性", "adx_hi": true, "atr": 39.115, "atr_pct": 1.0, "lots": 2, "lots_now": 0, "be_trigger_r": 0.38, "n_lines": 370, "n_lines_up": 195, "n_lines_dn": 175, "fvg_max_age": 30, "fvg_cap_atr": 1.0, "kline_bars": 1023}, "regime_now": "RANGE", "regime_dur": 17, "regime_strip": "SSSSSSSSSSSSTTRRTTTTTTTTTTBBBBBBBBBBRRTTRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRSSSSSSSSSSSSSSSSSSSTTTTTTTTTTTTRRRRRRRRRRRRRRRRR", "chart": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [3884.277, 3924.067, 3939.566, 3940.799, 3927.592, 3884.151, 3930.251, 3967.63, 3985.464, 3971.199, 4006.727, 4039.471, 4030.138, 4043.381, 4053.375, 4075.845, 4074.813, 4110.788, 4081.033, 4074.811, 4076.143, 4061.822, 4107.297, 4135.451, 4168.447, 4163.854, 4201.347, 4229.283, 4192.315, 4256.157, 4174.175, 4120.14, 4122.961, 4152.698, 4174.377, 4096.172, 4126.338, 4137.32, 4138.805, 4080.304, 4110.521, 4067.158, 4061.463, 4068.341, 4053.67, 4044.829, 3938.709, 3977.539, 3985.124, 3979.706, 4017.865, 4053.582, 4094.212, 4074.291, 4094.23, 4093.955, 4153.593, 4090.1, 4103.482, 4098.686, 4026.686, 4058.17, 4090.76, 4054.086, 4031.335, 4059.194, 4019.494, 3996.807, 3977.547, 4031.537, 3966.023, 3909.274, 3963.727, 3912.381, 3865.317, 3791.662, 3812.162, 3839.665, 3868.087, 3853.632, 3808.903, 3823.133, 3823.293, 3812.111, 3833.536, 3812.613, 3816.37, 3815.122, 3864.273, 3896.485, 3943.816, 3950.708, 3933.553, 3957.161, 3930.022, 3930.104, 3979.49, 3952.122, 3907.206, 3891.175, 3902.696, 3863.37, 3881.741, 3911.891, 3950.237, 3926.531, 3979.881, 3963.066, 3952.795, 3955.549, 3942.509, 3935.548, 3943.922, 3939.095, 3910.923, 3867.022, 3879.726, 3861.746, 3876.998, 3891.961], "h": [3924.289, 3948.811, 3955.943, 3952.576, 3929.529, 3902.607, 3994.998, 3979.127, 4011.024, 3991.262, 4026.626, 4050.621, 4057.831, 4058.604, 4083.19, 4086.637, 4106.844, 4114.844, 4092.613, 4092.831, 4090.201, 4112.152, 4118.755, 4166.147, 4180.21, 4183.063, 4229.58, 4230.184, 4245.068, 4258.863, 4191.807, 4145.661, 4170.289, 4169.847, 4199.527, 4120.088, 4153.879, 4150.289, 4153.561, 4110.782, 4112.955, 4093.041, 4089.575, 4107.046, 4080.718, 4078.932, 4007.493, 4010.872, 4006.313, 3997.478, 4060.271, 4097.166, 4103.926, 4109.958, 4117.451, 4164.418, 4175.348, 4117.285, 4133.098, 4099.78, 4075.334, 4097.415, 4143.314, 4093.678, 4073.88, 4060.069, 4028.514, 4016.026, 4040.539, 4074.828, 3983.054, 3967.126, 3981.672, 3940.451, 3869.215, 3831.659, 3864.6, 3884.435, 3878.832, 3861.04, 3858.31, 3844.012, 3845.766, 3839.341, 3847.093, 3827.636, 3831.94, 3884.397, 3902.054, 3940.935, 3967.592, 3966.391, 3950.621, 3968.476, 3932.641, 3983.507, 3994.181, 3961.137, 3925.062, 3912.131, 3910.239, 3896.206, 3926.435, 3958.033, 3970.31, 3986.298, 3995.175, 3965.808, 3968.112, 3980.202, 3948.421, 3951.322, 3958.117, 3949.255, 3912.325, 3895.51, 3891.62, 3894.664, 3898.836, 3919.669], "l": [3872.776, 3891.861, 3929.921, 3900.116, 3871.3, 3875.684, 3926.249, 3955.246, 3979.814, 3966.198, 3992.407, 4020.904, 4028.909, 4038.429, 4051.685, 4062.133, 4074.68, 4070.46, 4061.145, 4071.08, 4062.872, 4061.822, 4100.966, 4129.911, 4163.137, 4154.246, 4186.082, 4199.344, 4192.315, 4177.918, 4114.086, 4108.604, 4107.994, 4139.974, 4074.217, 4067.747, 4119.8, 4104.459, 4077.616, 4055.828, 4055.886, 4045.69, 4032.583, 4059.907, 4043.433, 4015.063, 3927.853, 3955.908, 3963.442, 3958.437, 4008.177, 4051.065, 4077.87, 4073.732, 4080.294, 4070.172, 4085.591, 4075.492, 4093.009, 4007.859, 3992.552, 4052.17, 4087.535, 4019.215, 4027.255, 4005.414, 3971.713, 3967.913, 3938.878, 3995.807, 3900.668, 3869.304, 3943.695, 3867.601, 3745.174, 3741.11, 3743.36, 3839.665, 3851.706, 3808.636, 3793.449, 3797.373, 3782.481, 3767.503, 3822.374, 3797.643, 3799.524, 3815.122, 3864.273, 3885.625, 3938.625, 3930.639, 3927.549, 3924.642, 3903.705, 3924.474, 3955.601, 3879.579, 3888.099, 3883.787, 3855.352, 3850.863, 3881.741, 3909.312, 3947.798, 3926.504, 3976.469, 3932.252, 3930.447, 3915.221, 3916.492, 3925.72, 3933.469, 3927.347, 3852.032, 3867.022, 3858.15, 3842.721, 3866.892, 3888.496], "c": [3923.287, 3891.861, 3948.552, 3919.285, 3880.097, 3890.165, 3994.998, 3966.171, 3986.225, 3988.558, 4026.626, 4027.21, 4055.547, 4051.425, 4082.127, 4085.077, 4106.258, 4093.25, 4079.9, 4086.344, 4078.637, 4107.514, 4112.159, 4160.174, 4180.092, 4179.952, 4225.021, 4214.489, 4242.572, 4177.918, 4135.389, 4131.528, 4169.538, 4162.185, 4077.277, 4112.9, 4152.569, 4145.373, 4093.727, 4098.636, 4068.569, 4057.74, 4075.102, 4083.974, 4057.781, 4027.736, 3959.338, 4010.031, 3993.226, 3987.015, 4031.513, 4096.472, 4091.892, 4108.076, 4090.481, 4163.097, 4106.252, 4110.813, 4120.281, 4027.265, 4073.902, 4094.397, 4112.445, 4028.904, 4043.643, 4041.238, 3990.235, 3970.88, 4036.588, 3996.162, 3913.794, 3967.126, 3955.578, 3882.413, 3764.155, 3796.281, 3864.367, 3867.034, 3876.777, 3814.198, 3858.245, 3813.315, 3828.469, 3804.693, 3832.262, 3809.663, 3822.285, 3878.43, 3900.352, 3940.037, 3966.594, 3934.093, 3946.675, 3926.965, 3927.176, 3982.654, 3990.304, 3894.422, 3903.721, 3905.203, 3882.008, 3889.445, 3912.524, 3956.571, 3952.179, 3986.298, 3979.888, 3941.386, 3942.088, 3930.116, 3932.699, 3940.551, 3951.507, 3934.404, 3888.111, 3885.333, 3864.279, 3891.601, 3875.604, 3911.871], "lines": [{"k": "up", "ai": 978, "ap": 3741.11, "s": 3.2991, "t": 2, "role": "pend"}, {"k": "dn", "ai": 932, "ap": 4258.863, "s": -3.5015, "t": 3, "role": "pend"}, {"k": "dn", "ai": 972, "ap": 4074.828, "s": -2.1528, "t": 2, "role": ""}, {"k": "dn", "ai": 965, "ap": 4143.314, "s": -3.3668, "t": 2, "role": ""}, {"k": "dn", "ai": 959, "ap": 4175.348, "s": -3.6035, "t": 3, "role": ""}, {"k": "dn", "ai": 937, "ap": 4199.527, "s": -1.099, "t": 2, "role": ""}, {"k": "dn", "ai": 937, "ap": 4199.527, "s": -2.0076, "t": 3, "role": ""}, {"k": "dn", "ai": 932, "ap": 4258.863, "s": -3.0931, "t": 2, "role": ""}, {"k": "up", "ai": 717, "ap": 3347.651, "s": 2.4698, "t": 2, "role": "broken", "bi": 70}, {"k": "up", "ai": 733, "ap": 3483.38, "s": 1.8867, "t": 2, "role": "broken", "bi": 73}], "trades": [{"ei": -9, "ep": 4049.91, "xi": 6, "xp": 3930.25, "d": "S", "p": 119.7, "l": 1, "m": 0}, {"ei": 10, "ep": 4026.63, "xi": 22, "xp": 4112.16, "d": "L", "p": 85.5, "l": 1, "m": 0}, {"ei": 40, "ep": 4068.57, "xi": 50, "xp": 4027.04, "d": "S", "p": 41.5, "l": 1, "m": 0}, {"ei": 59, "ep": 4027.26, "xi": 68, "xp": 4017.5, "d": "S", "p": 9.8, "l": 1, "m": 0}, {"ei": 73, "ep": 3882.41, "xi": 77, "xp": 3870.67, "d": "S", "p": 23.5, "l": 2, "m": 0}, {"ei": 80, "ep": 3858.24, "xi": 100, "xp": 3865.76, "d": "L", "p": 15.0, "l": 2, "m": 0}, {"ei": 105, "ep": 3986.3, "xi": 113, "xp": 3935.39, "d": "L", "p": -50.9, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 170.4, 133.5, 88.0, 88.0, 88.0, 93.2, 93.2, 93.2, 93.2, 49.9, 49.9, 12.7, 12.7, 17.3, 17.3, 17.3, 17.3, 17.3, 18.6, 18.6, -80.2, -96.5, -96.5, -165.4, -165.4, -181.3, -258.1, -253.3, -253.3, -275.2, -271.6, -271.6, -271.6, -319.7, -319.7, -312.3, -312.3, -312.3, -347.9, -347.9, -348.8, -343.4, -382.3, -400.6, -396.6, -396.6, -396.6, -275.3, -275.3, -275.3, -275.3, -316.6, -313.2, -313.2, -313.2, -313.2, -313.2, 179.3, 179.3, 186.3, 186.3, 186.3, 186.3, 298.9, 298.9, 297.8, 219.9, 219.9, 219.9, 293.3, 293.3, 297.2, 311.8, 290.2, 290.2, 290.2, 290.2, 391.3, 391.3, 391.3, 550.6, 550.6, 500.9, 500.9, 508.6, 508.6, 508.6, 514.2, 519.3, 519.3, 519.3, 718.1, 718.1, 724.6, 724.6, 724.6, 844.3, 844.3, 929.8, 929.8, 929.8, 971.3, 971.3, 971.3, 981.1, 992.9, 992.9, 1000.4, 1000.4, 949.5], "eq_n": 1023, "dd": 685.1}, "stats": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 55, "longs": 27, "shorts": 28, "wins": 30, "losses": 25, "win_rate": 54.5, "pf": 2.01, "pnl": 970.3, "pnl_per_lot": 949.5, "avg_trade": 17.6, "avg_per_lot": 17.26, "max_dd": 685.1, "max_dd_range": ["2022-11-02", "2024-05-16"], "avg_held": 9.0, "avg_lots": 1.11, "be_hits": 32, "splits": 4, "mr_trades": 0, "best": {"pnl": 492.5, "date": "2024-09-24", "dir": "long"}, "worst": {"pnl": -132.2, "date": "2023-07-24", "dir": "short"}, "open_pos": null}, "chart_reg": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [3884.277, 3924.067, 3939.566, 3940.799, 3927.592, 3884.151, 3930.251, 3967.63, 3985.464, 3971.199, 4006.727, 4039.471, 4030.138, 4043.381, 4053.375, 4075.845, 4074.813, 4110.788, 4081.033, 4074.811, 4076.143, 4061.822, 4107.297, 4135.451, 4168.447, 4163.854, 4201.347, 4229.283, 4192.315, 4256.157, 4174.175, 4120.14, 4122.961, 4152.698, 4174.377, 4096.172, 4126.338, 4137.32, 4138.805, 4080.304, 4110.521, 4067.158, 4061.463, 4068.341, 4053.67, 4044.829, 3938.709, 3977.539, 3985.124, 3979.706, 4017.865, 4053.582, 4094.212, 4074.291, 4094.23, 4093.955, 4153.593, 4090.1, 4103.482, 4098.686, 4026.686, 4058.17, 4090.76, 4054.086, 4031.335, 4059.194, 4019.494, 3996.807, 3977.547, 4031.537, 3966.023, 3909.274, 3963.727, 3912.381, 3865.317, 3791.662, 3812.162, 3839.665, 3868.087, 3853.632, 3808.903, 3823.133, 3823.293, 3812.111, 3833.536, 3812.613, 3816.37, 3815.122, 3864.273, 3896.485, 3943.816, 3950.708, 3933.553, 3957.161, 3930.022, 3930.104, 3979.49, 3952.122, 3907.206, 3891.175, 3902.696, 3863.37, 3881.741, 3911.891, 3950.237, 3926.531, 3979.881, 3963.066, 3952.795, 3955.549, 3942.509, 3935.548, 3943.922, 3939.095, 3910.923, 3867.022, 3879.726, 3861.746, 3876.998, 3891.961], "h": [3924.289, 3948.811, 3955.943, 3952.576, 3929.529, 3902.607, 3994.998, 3979.127, 4011.024, 3991.262, 4026.626, 4050.621, 4057.831, 4058.604, 4083.19, 4086.637, 4106.844, 4114.844, 4092.613, 4092.831, 4090.201, 4112.152, 4118.755, 4166.147, 4180.21, 4183.063, 4229.58, 4230.184, 4245.068, 4258.863, 4191.807, 4145.661, 4170.289, 4169.847, 4199.527, 4120.088, 4153.879, 4150.289, 4153.561, 4110.782, 4112.955, 4093.041, 4089.575, 4107.046, 4080.718, 4078.932, 4007.493, 4010.872, 4006.313, 3997.478, 4060.271, 4097.166, 4103.926, 4109.958, 4117.451, 4164.418, 4175.348, 4117.285, 4133.098, 4099.78, 4075.334, 4097.415, 4143.314, 4093.678, 4073.88, 4060.069, 4028.514, 4016.026, 4040.539, 4074.828, 3983.054, 3967.126, 3981.672, 3940.451, 3869.215, 3831.659, 3864.6, 3884.435, 3878.832, 3861.04, 3858.31, 3844.012, 3845.766, 3839.341, 3847.093, 3827.636, 3831.94, 3884.397, 3902.054, 3940.935, 3967.592, 3966.391, 3950.621, 3968.476, 3932.641, 3983.507, 3994.181, 3961.137, 3925.062, 3912.131, 3910.239, 3896.206, 3926.435, 3958.033, 3970.31, 3986.298, 3995.175, 3965.808, 3968.112, 3980.202, 3948.421, 3951.322, 3958.117, 3949.255, 3912.325, 3895.51, 3891.62, 3894.664, 3898.836, 3919.669], "l": [3872.776, 3891.861, 3929.921, 3900.116, 3871.3, 3875.684, 3926.249, 3955.246, 3979.814, 3966.198, 3992.407, 4020.904, 4028.909, 4038.429, 4051.685, 4062.133, 4074.68, 4070.46, 4061.145, 4071.08, 4062.872, 4061.822, 4100.966, 4129.911, 4163.137, 4154.246, 4186.082, 4199.344, 4192.315, 4177.918, 4114.086, 4108.604, 4107.994, 4139.974, 4074.217, 4067.747, 4119.8, 4104.459, 4077.616, 4055.828, 4055.886, 4045.69, 4032.583, 4059.907, 4043.433, 4015.063, 3927.853, 3955.908, 3963.442, 3958.437, 4008.177, 4051.065, 4077.87, 4073.732, 4080.294, 4070.172, 4085.591, 4075.492, 4093.009, 4007.859, 3992.552, 4052.17, 4087.535, 4019.215, 4027.255, 4005.414, 3971.713, 3967.913, 3938.878, 3995.807, 3900.668, 3869.304, 3943.695, 3867.601, 3745.174, 3741.11, 3743.36, 3839.665, 3851.706, 3808.636, 3793.449, 3797.373, 3782.481, 3767.503, 3822.374, 3797.643, 3799.524, 3815.122, 3864.273, 3885.625, 3938.625, 3930.639, 3927.549, 3924.642, 3903.705, 3924.474, 3955.601, 3879.579, 3888.099, 3883.787, 3855.352, 3850.863, 3881.741, 3909.312, 3947.798, 3926.504, 3976.469, 3932.252, 3930.447, 3915.221, 3916.492, 3925.72, 3933.469, 3927.347, 3852.032, 3867.022, 3858.15, 3842.721, 3866.892, 3888.496], "c": [3923.287, 3891.861, 3948.552, 3919.285, 3880.097, 3890.165, 3994.998, 3966.171, 3986.225, 3988.558, 4026.626, 4027.21, 4055.547, 4051.425, 4082.127, 4085.077, 4106.258, 4093.25, 4079.9, 4086.344, 4078.637, 4107.514, 4112.159, 4160.174, 4180.092, 4179.952, 4225.021, 4214.489, 4242.572, 4177.918, 4135.389, 4131.528, 4169.538, 4162.185, 4077.277, 4112.9, 4152.569, 4145.373, 4093.727, 4098.636, 4068.569, 4057.74, 4075.102, 4083.974, 4057.781, 4027.736, 3959.338, 4010.031, 3993.226, 3987.015, 4031.513, 4096.472, 4091.892, 4108.076, 4090.481, 4163.097, 4106.252, 4110.813, 4120.281, 4027.265, 4073.902, 4094.397, 4112.445, 4028.904, 4043.643, 4041.238, 3990.235, 3970.88, 4036.588, 3996.162, 3913.794, 3967.126, 3955.578, 3882.413, 3764.155, 3796.281, 3864.367, 3867.034, 3876.777, 3814.198, 3858.245, 3813.315, 3828.469, 3804.693, 3832.262, 3809.663, 3822.285, 3878.43, 3900.352, 3940.037, 3966.594, 3934.093, 3946.675, 3926.965, 3927.176, 3982.654, 3990.304, 3894.422, 3903.721, 3905.203, 3882.008, 3889.445, 3912.524, 3956.571, 3952.179, 3986.298, 3979.888, 3941.386, 3942.088, 3930.116, 3932.699, 3940.551, 3951.507, 3934.404, 3888.111, 3885.333, 3864.279, 3891.601, 3875.604, 3911.871], "lines": [{"k": "up", "ai": 978, "ap": 3741.11, "s": 3.2991, "t": 2, "role": "pend"}, {"k": "dn", "ai": 932, "ap": 4258.863, "s": -3.5015, "t": 3, "role": "pend"}, {"k": "dn", "ai": 972, "ap": 4074.828, "s": -2.1528, "t": 2, "role": ""}, {"k": "dn", "ai": 965, "ap": 4143.314, "s": -3.3668, "t": 2, "role": ""}, {"k": "dn", "ai": 959, "ap": 4175.348, "s": -3.6035, "t": 3, "role": ""}, {"k": "dn", "ai": 937, "ap": 4199.527, "s": -1.099, "t": 2, "role": ""}, {"k": "dn", "ai": 937, "ap": 4199.527, "s": -2.0076, "t": 3, "role": ""}, {"k": "dn", "ai": 932, "ap": 4258.863, "s": -3.0931, "t": 2, "role": ""}, {"k": "up", "ai": 717, "ap": 3347.651, "s": 2.4698, "t": 2, "role": "broken", "bi": 70}, {"k": "up", "ai": 733, "ap": 3483.38, "s": 1.8867, "t": 2, "role": "broken", "bi": 73}], "trades": [{"ei": -7, "ep": 4006.55, "xi": 6, "xp": 3930.25, "d": "S", "p": 76.3, "l": 1, "m": 0}, {"ei": 10, "ep": 4026.63, "xi": 22, "xp": 4112.16, "d": "L", "p": 85.5, "l": 1, "m": 0}, {"ei": 42, "ep": 4075.1, "xi": 43, "xp": 4092.72, "d": "L", "p": 17.6, "l": 1, "m": 1}, {"ei": 69, "ep": 3996.16, "xi": 70, "xp": 3919.29, "d": "L", "p": -76.9, "l": 1, "m": 1}, {"ei": 73, "ep": 3882.41, "xi": 77, "xp": 3870.67, "d": "S", "p": 23.5, "l": 2, "m": 0}, {"ei": 80, "ep": 3858.24, "xi": 100, "xp": 3865.76, "d": "L", "p": 7.5, "l": 1, "m": 0}, {"ei": 103, "ep": 3956.57, "xi": 114, "xp": 3869.78, "d": "S", "p": 86.8, "l": 1, "m": 1}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 170.4, 133.5, 88.0, 88.0, 88.0, 93.2, 66.0, 66.0, 66.0, 66.0, 66.0, 89.2, 89.2, 89.2, 89.2, 89.2, 89.2, 89.2, 89.2, 89.2, 114.8, 114.8, 114.8, 114.8, 227.6, 232.1, 205.6, 210.4, 210.4, 188.5, 164.5, 164.5, 164.5, 166.4, 166.4, 166.4, 166.4, 166.4, 130.8, 130.8, 129.8, 135.3, 96.4, 83.8, 52.1, 52.1, 52.1, 11.7, 11.7, 11.7, 11.7, -29.7, -26.2, -26.2, -26.2, -26.2, -26.2, 466.3, 466.3, 409.8, 409.8, 409.8, 409.8, 476.5, 489.8, 489.8, 507.0, 507.0, 507.0, 580.4, 580.4, 580.4, 584.4, 613.1, 613.1, 613.1, 613.1, 714.2, 714.2, 714.2, 873.5, 873.5, 823.8, 823.8, 831.5, 831.5, 831.5, 837.1, 804.2, 804.2, 804.2, 1003.0, 1003.0, 1003.0, 1003.0, 1003.0, 1079.3, 1079.3, 1164.8, 1164.8, 1164.8, 1182.4, 1182.4, 1182.4, 1105.6, 1117.3, 1117.3, 1124.8, 1124.8, 1211.6], "eq_n": 1023, "dd": 362.8}, "stats_reg": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 50, "longs": 22, "shorts": 28, "wins": 28, "losses": 22, "win_rate": 56.0, "pf": 2.51, "pnl": 1223.4, "pnl_per_lot": 1211.6, "avg_trade": 24.5, "avg_per_lot": 24.23, "max_dd": 362.8, "max_dd_range": ["2023-09-22", "2024-08-19"], "avg_held": 8.2, "avg_lots": 1.1, "be_hits": 19, "splits": 5, "mr_trades": 15, "best": {"pnl": 492.5, "date": "2024-09-24", "dir": "long"}, "worst": {"pnl": -96.1, "date": "2023-12-20", "dir": "short"}, "open_pos": null}}, {"name": "红利指数", "code": "sh000015", "period": "日线", "price": 3246.18, "prev_close": 3259.04, "provisional": false, "bar_state": "已收盘", "chg_pct": -0.39, "atr": 50.042, "atr_pct": 1.54, "adx": 21.16, "adx_prev": 21.3, "adx_rising": false, "adx_dir": "下行", "adx_dir_tag": "中", "trend": "中性", "strength": "中", "adx_hi": false, "lots_suggest": 1, "cooldown_bars": 2, "be_trigger_r": 0.38, "be_offset_atr": 0.15, "strategy": "tori策略（Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本）", "fvg_cand": {"long": {"j": 1000, "edge": 3222.73, "near": 3265.81, "date": "2026-08-19", "stop": 3222.73, "src": "fvg", "capped": false, "kind": "bull", "dist": 23.45, "dist_atr": 0.47}, "short": {"j": 1021, "edge": 3292.09, "near": 3272.24, "date": "2026-09-17", "stop": 3292.09, "src": "fvg", "capped": false, "kind": "bear", "dist": 45.92, "dist_atr": 0.92}}, "recommendation": "看空", "lots": 1, "entry": 3297.93, "entry_time": "2026-09-15", "held_bars": 3, "stop_loss": 3290.42, "stop_src": "be", "fvg_stop": null, "fvg_stop_src": null, "be_line": 3290.28, "be_hit": true, "risk_pts": 107.8, "entry_adx": 22.15, "entry_lots": 1, "sl_dist": 44.25, "take_profit": null, "risk_reward": null, "exit_rule": "收盘涨回安全线上方 → 离场", "lines": {"safety": {"p": 3386.73, "slope": -4.6337, "slope_pct": -0.1368, "dir": "向下", "touches": 2, "a_date": "2026-09-01", "b_date": "2026-09-10"}, "action": {"p": 3349.05, "slope": 7.1612, "slope_pct": 0.2138, "dir": "向上", "touches": 3, "a_date": "2026-08-05", "b_date": "2026-09-07"}}, "fvg": null, "lines_safety_p": 3386.73, "lines_action_p": 3349.05, "reasons": [{"t": "ADX=21.2，在 20 以上但未持续上行 → 趋势强弱判定为 中性", "c": ""}, {"t": "开仓于 2026-09-15（破上升趋势线入场），入场 3297.93，已持有 3 根", "c": "neg"}, {"t": "行动线（入场依据）：上升 线，触点 3，现在 已翻到价格上方 位于 3349.05", "c": "neg"}, {"t": "安全线（止损依据）：下降 线，触点 2，现在 3386.73（价格在下方）", "c": "neg"}, {"t": "主线止损 3290.42（距现价 44.25 点）｜风险 107.80 点", "c": ""}, {"t": "本笔未分批（只有 1 手）", "c": ""}, {"t": "保本规则：浮盈 ≥ 0.38R 后止损抬到 3290.28（保本线）（已触发）", "c": ""}, {"t": "离场规则：收盘涨回安全线上方就走；无固定止盈，趋势线不断推进就一路持有", "c": ""}, {"t": "手数：本笔开仓时 ADX=22.1 → 1 手；当下 ADX=21.2（不满足 >20 且上行）若新开仓建议 1 手", "c": ""}], "indicators": {"adx": 21.16, "adx_prev": 21.3, "adx_dir": "下行", "adx_zone": "中性", "adx_hi": false, "atr": 50.042, "atr_pct": 1.54, "lots": 1, "lots_now": 1, "be_trigger_r": 0.38, "n_lines": 362, "n_lines_up": 207, "n_lines_dn": 155, "fvg_max_age": 30, "fvg_cap_atr": 1.0, "kline_bars": 1023}, "regime_now": "TRANSITION", "regime_dur": 4, "regime_strip": "TTTTRRRTTTTTTTTTTTTTTTTBBBBBRRRTTTTTTTTTSSSSRRRRRRRRRRRRSSSSSSSSSSSSSSSSSRRRTTTTTTTTTTTRRRRTTRRRRRRRBBBBBBBBBBBBBBBBTTTT", "chart": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [3264.866, 3282.882, 3238.134, 3234.162, 3254.794, 3205.814, 3188.984, 3212.594, 3210.215, 3223.967, 3211.339, 3214.846, 3229.531, 3234.039, 3214.897, 3216.987, 3261.089, 3252.027, 3264.081, 3262.944, 3256.978, 3313.33, 3340.799, 3323.188, 3316.486, 3273.412, 3252.486, 3255.353, 3246.076, 3227.231, 3208.156, 3208.425, 3192.67, 3204.585, 3186.074, 3157.857, 3177.594, 3157.818, 3164.347, 3143.063, 3143.564, 3193.719, 3294.027, 3273.387, 3288.599, 3294.526, 3273.495, 3258.304, 3254.35, 3245.91, 3214.71, 3258.433, 3208.544, 3161.666, 3108.686, 3046.099, 3083.276, 3062.844, 2982.912, 2959.782, 2893.963, 2915.465, 2854.1, 2907.273, 2949.559, 2960.273, 3030.398, 2986.489, 3006.636, 2960.089, 2971.387, 2997.185, 3052.243, 3105.474, 3073.347, 3069.32, 3164.812, 3123.439, 3160.201, 3200.687, 3120.478, 3139.014, 3157.391, 3192.327, 3181.726, 3203.654, 3192.46, 3140.249, 3144.178, 3193.91, 3191.55, 3248.543, 3215.262, 3201.056, 3181.418, 3207.984, 3221.262, 3271.997, 3256.352, 3290.047, 3308.245, 3350.95, 3293.297, 3338.434, 3361.681, 3380.779, 3393.269, 3415.258, 3344.677, 3346.888, 3347.522, 3308.63, 3352.366, 3409.33, 3386.114, 3326.176, 3318.686, 3298.217, 3267.689, 3245.082], "h": [3298.098, 3307.705, 3263.68, 3264.726, 3254.794, 3228.343, 3222.251, 3225.184, 3226.636, 3228.856, 3218.629, 3237.777, 3245.873, 3239.121, 3231.052, 3267.347, 3277.065, 3288.496, 3286.972, 3289.266, 3322.12, 3357.411, 3354.792, 3335.647, 3316.486, 3288.608, 3268.124, 3275.904, 3261.306, 3234.208, 3231.246, 3221.921, 3216.824, 3219.406, 3204.347, 3159.028, 3205.451, 3179.725, 3168.261, 3177.221, 3195.129, 3294.088, 3347.411, 3321.559, 3337.367, 3336.526, 3318.226, 3279.966, 3263.332, 3261.232, 3286.007, 3258.433, 3208.544, 3162.391, 3109.84, 3088.104, 3119.901, 3062.927, 3007.371, 2960.271, 2926.106, 2915.789, 2921.022, 2963.651, 2985.551, 3035.709, 3037.463, 3046.738, 3010.37, 2992.498, 3003.99, 3074.188, 3119.505, 3134.683, 3101.433, 3174.097, 3202.935, 3178.041, 3209.233, 3213.389, 3160.909, 3155.944, 3203.55, 3227.461, 3223.652, 3237.626, 3194.402, 3152.117, 3209.845, 3207.259, 3246.221, 3262.339, 3234.493, 3212.305, 3216.873, 3222.732, 3257.316, 3289.849, 3311.692, 3311.975, 3360.45, 3365.614, 3355.312, 3375.269, 3377.447, 3405.485, 3446.97, 3418.747, 3393.531, 3368.667, 3351.774, 3358.253, 3413.027, 3414.534, 3387.823, 3350.191, 3322.003, 3304.074, 3272.237, 3269.377], "l": [3264.866, 3240.325, 3228.715, 3234.162, 3197.039, 3187.868, 3179.124, 3197.124, 3199.057, 3196.085, 3197.826, 3200.201, 3226.721, 3209.001, 3205.604, 3216.987, 3254.689, 3248.298, 3259.424, 3258.014, 3256.978, 3311.832, 3322.206, 3295.281, 3262.948, 3243.633, 3242.874, 3244.649, 3216.749, 3205.728, 3195.221, 3185.183, 3192.67, 3194.665, 3152.479, 3123.372, 3168.369, 3148.956, 3126.152, 3140.608, 3143.564, 3188.84, 3277.619, 3244.948, 3273.916, 3292.754, 3257.331, 3242.986, 3227.002, 3223.679, 3212.712, 3209.949, 3165.485, 3116.579, 3050.129, 3018.957, 3059.242, 3003.303, 2957.401, 2894.768, 2843.125, 2842.277, 2845.938, 2905.946, 2946.219, 2950.508, 2968.213, 2976.498, 2973.997, 2943.664, 2957.639, 2996.507, 3042.866, 3063.859, 3058.986, 3067.884, 3121.373, 3103.494, 3154.172, 3140.132, 3106.411, 3109.302, 3154.624, 3192.099, 3161.657, 3192.504, 3136.335, 3119.894, 3140.319, 3170.796, 3189.759, 3217.2, 3203.591, 3183.635, 3169.174, 3191.92, 3219.104, 3265.806, 3256.352, 3285.842, 3304.837, 3315.06, 3291.593, 3325.78, 3337.826, 3362.634, 3389.446, 3339.699, 3338.53, 3337.297, 3284.602, 3308.63, 3344.701, 3382.717, 3322.798, 3309.254, 3292.095, 3254.467, 3242.908, 3235.116], "c": [3289.858, 3240.612, 3232.464, 3253.527, 3206.243, 3223.848, 3221.307, 3204.539, 3210.946, 3218.345, 3218.265, 3230.986, 3237.253, 3214.507, 3219.105, 3261.209, 3261.702, 3284.395, 3274.321, 3267.99, 3321.616, 3345.002, 3335.005, 3333.939, 3267.466, 3254.142, 3253.215, 3247.745, 3231.474, 3205.728, 3210.356, 3204.088, 3209.043, 3199.082, 3153.432, 3141.371, 3173.204, 3171.221, 3153.338, 3150.595, 3185.291, 3293.399, 3291.756, 3306.652, 3307.114, 3302.187, 3284.747, 3268.0, 3239.841, 3236.579, 3279.099, 3224.487, 3169.014, 3124.973, 3051.087, 3086.591, 3066.912, 3004.763, 2960.381, 2894.899, 2924.275, 2855.489, 2906.143, 2939.793, 2967.624, 3030.723, 2987.201, 3022.253, 2983.984, 2979.099, 2995.35, 3071.899, 3115.387, 3074.291, 3059.915, 3174.097, 3129.306, 3178.041, 3205.605, 3140.447, 3152.453, 3151.495, 3190.997, 3227.272, 3220.684, 3198.089, 3148.814, 3141.457, 3200.115, 3197.712, 3233.902, 3223.765, 3212.359, 3187.458, 3206.983, 3218.174, 3256.308, 3279.143, 3296.659, 3300.463, 3349.953, 3322.304, 3351.481, 3366.867, 3372.004, 3404.039, 3396.149, 3345.829, 3347.406, 3351.343, 3302.645, 3355.085, 3407.406, 3387.832, 3328.343, 3316.222, 3297.93, 3277.876, 3259.036, 3246.178], "lines": [{"k": "dn", "ai": 1009, "ap": 3446.97, "s": -4.6337, "t": 2, "role": "safe"}, {"k": "up", "ai": 990, "ap": 3119.894, "s": 7.1612, "t": 3, "role": "action"}, {"k": "up", "ai": 666, "ap": 2863.709, "s": 0.5949, "t": 2, "role": "broken", "bi": 57}, {"k": "up", "ai": 666, "ap": 2863.709, "s": 0.6998, "t": 2, "role": "broken", "bi": 57}], "trades": [{"ei": 4, "ep": 3206.24, "xi": 11, "xp": 3230.99, "d": "S", "p": -24.7, "l": 1, "m": 0}, {"ei": 27, "ep": 3247.74, "xi": 41, "xp": 3241.74, "d": "S", "p": 6.0, "l": 1, "m": 0}, {"ei": 53, "ep": 3124.97, "xi": 56, "xp": 3115.63, "d": "S", "p": 9.3, "l": 1, "m": 0}, {"ei": 75, "ep": 3174.1, "xi": 86, "xp": 3140.09, "d": "L", "p": -34.0, "l": 1, "m": 0}, {"ei": 96, "ep": 3256.31, "xi": 98, "xp": 3256.35, "d": "L", "p": 0.0, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -63.9, -56.8, -56.8, -91.8, -91.8, -91.8, -91.8, -91.8, -78.4, -106.9, -148.7, -148.7, -104.9, -99.9, -99.9, -56.9, -56.9, -56.9, -58.8, -58.8, 46.5, 46.5, -6.3, -6.3, -93.6, -187.5, -187.5, -187.5, -178.9, -174.7, -174.7, -202.4, -198.9, -226.5, -268.5, -326.3, -326.3, -318.9, -318.9, -174.7, -174.7, -174.7, -100.9, -93.3, -93.3, -87.4, -87.4, -81.2, -81.2, -81.2, -81.2, -81.2, -8.6, -8.6, -8.6, -1.7, -1.7, -1.7, -1.7, -28.6, -68.0, -68.0, 30.4, -10.9, -10.9, -4.5, -30.1, -26.6, -26.6, -26.6, -31.2, -31.2, -31.2, -31.2, 15.5, 15.5, -14.9, -14.9, -10.5, -75.2, -75.2, -114.6, -114.6, -114.6, -118.9, -118.9, -118.9, -53.4, -53.4, -53.4, -23.8, -23.8, 1.1, 1.1, 5.6, 5.6, 29.5, 29.5, 29.5, 4.8, 4.8, 4.8, 10.8, 10.8, 20.1, 20.1, 20.1, 20.1, -13.9, -13.9, -13.9, -13.9], "eq_n": 1023, "dd": 410.9}, "stats": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 55, "longs": 30, "shorts": 25, "wins": 31, "losses": 24, "win_rate": 56.4, "pf": 1.09, "pnl": 87.8, "pnl_per_lot": -13.9, "avg_trade": 1.6, "avg_per_lot": -0.25, "max_dd": 410.9, "max_dd_range": ["2022-07-06", "2024-01-02"], "avg_held": 8.1, "avg_lots": 1.2, "be_hits": 32, "splits": 8, "mr_trades": 0, "best": {"pnl": 147.6, "date": "2024-03-11", "dir": "short"}, "worst": {"pnl": -87.3, "date": "2023-07-28", "dir": "long"}, "open_pos": "short"}, "chart_reg": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [3264.866, 3282.882, 3238.134, 3234.162, 3254.794, 3205.814, 3188.984, 3212.594, 3210.215, 3223.967, 3211.339, 3214.846, 3229.531, 3234.039, 3214.897, 3216.987, 3261.089, 3252.027, 3264.081, 3262.944, 3256.978, 3313.33, 3340.799, 3323.188, 3316.486, 3273.412, 3252.486, 3255.353, 3246.076, 3227.231, 3208.156, 3208.425, 3192.67, 3204.585, 3186.074, 3157.857, 3177.594, 3157.818, 3164.347, 3143.063, 3143.564, 3193.719, 3294.027, 3273.387, 3288.599, 3294.526, 3273.495, 3258.304, 3254.35, 3245.91, 3214.71, 3258.433, 3208.544, 3161.666, 3108.686, 3046.099, 3083.276, 3062.844, 2982.912, 2959.782, 2893.963, 2915.465, 2854.1, 2907.273, 2949.559, 2960.273, 3030.398, 2986.489, 3006.636, 2960.089, 2971.387, 2997.185, 3052.243, 3105.474, 3073.347, 3069.32, 3164.812, 3123.439, 3160.201, 3200.687, 3120.478, 3139.014, 3157.391, 3192.327, 3181.726, 3203.654, 3192.46, 3140.249, 3144.178, 3193.91, 3191.55, 3248.543, 3215.262, 3201.056, 3181.418, 3207.984, 3221.262, 3271.997, 3256.352, 3290.047, 3308.245, 3350.95, 3293.297, 3338.434, 3361.681, 3380.779, 3393.269, 3415.258, 3344.677, 3346.888, 3347.522, 3308.63, 3352.366, 3409.33, 3386.114, 3326.176, 3318.686, 3298.217, 3267.689, 3245.082], "h": [3298.098, 3307.705, 3263.68, 3264.726, 3254.794, 3228.343, 3222.251, 3225.184, 3226.636, 3228.856, 3218.629, 3237.777, 3245.873, 3239.121, 3231.052, 3267.347, 3277.065, 3288.496, 3286.972, 3289.266, 3322.12, 3357.411, 3354.792, 3335.647, 3316.486, 3288.608, 3268.124, 3275.904, 3261.306, 3234.208, 3231.246, 3221.921, 3216.824, 3219.406, 3204.347, 3159.028, 3205.451, 3179.725, 3168.261, 3177.221, 3195.129, 3294.088, 3347.411, 3321.559, 3337.367, 3336.526, 3318.226, 3279.966, 3263.332, 3261.232, 3286.007, 3258.433, 3208.544, 3162.391, 3109.84, 3088.104, 3119.901, 3062.927, 3007.371, 2960.271, 2926.106, 2915.789, 2921.022, 2963.651, 2985.551, 3035.709, 3037.463, 3046.738, 3010.37, 2992.498, 3003.99, 3074.188, 3119.505, 3134.683, 3101.433, 3174.097, 3202.935, 3178.041, 3209.233, 3213.389, 3160.909, 3155.944, 3203.55, 3227.461, 3223.652, 3237.626, 3194.402, 3152.117, 3209.845, 3207.259, 3246.221, 3262.339, 3234.493, 3212.305, 3216.873, 3222.732, 3257.316, 3289.849, 3311.692, 3311.975, 3360.45, 3365.614, 3355.312, 3375.269, 3377.447, 3405.485, 3446.97, 3418.747, 3393.531, 3368.667, 3351.774, 3358.253, 3413.027, 3414.534, 3387.823, 3350.191, 3322.003, 3304.074, 3272.237, 3269.377], "l": [3264.866, 3240.325, 3228.715, 3234.162, 3197.039, 3187.868, 3179.124, 3197.124, 3199.057, 3196.085, 3197.826, 3200.201, 3226.721, 3209.001, 3205.604, 3216.987, 3254.689, 3248.298, 3259.424, 3258.014, 3256.978, 3311.832, 3322.206, 3295.281, 3262.948, 3243.633, 3242.874, 3244.649, 3216.749, 3205.728, 3195.221, 3185.183, 3192.67, 3194.665, 3152.479, 3123.372, 3168.369, 3148.956, 3126.152, 3140.608, 3143.564, 3188.84, 3277.619, 3244.948, 3273.916, 3292.754, 3257.331, 3242.986, 3227.002, 3223.679, 3212.712, 3209.949, 3165.485, 3116.579, 3050.129, 3018.957, 3059.242, 3003.303, 2957.401, 2894.768, 2843.125, 2842.277, 2845.938, 2905.946, 2946.219, 2950.508, 2968.213, 2976.498, 2973.997, 2943.664, 2957.639, 2996.507, 3042.866, 3063.859, 3058.986, 3067.884, 3121.373, 3103.494, 3154.172, 3140.132, 3106.411, 3109.302, 3154.624, 3192.099, 3161.657, 3192.504, 3136.335, 3119.894, 3140.319, 3170.796, 3189.759, 3217.2, 3203.591, 3183.635, 3169.174, 3191.92, 3219.104, 3265.806, 3256.352, 3285.842, 3304.837, 3315.06, 3291.593, 3325.78, 3337.826, 3362.634, 3389.446, 3339.699, 3338.53, 3337.297, 3284.602, 3308.63, 3344.701, 3382.717, 3322.798, 3309.254, 3292.095, 3254.467, 3242.908, 3235.116], "c": [3289.858, 3240.612, 3232.464, 3253.527, 3206.243, 3223.848, 3221.307, 3204.539, 3210.946, 3218.345, 3218.265, 3230.986, 3237.253, 3214.507, 3219.105, 3261.209, 3261.702, 3284.395, 3274.321, 3267.99, 3321.616, 3345.002, 3335.005, 3333.939, 3267.466, 3254.142, 3253.215, 3247.745, 3231.474, 3205.728, 3210.356, 3204.088, 3209.043, 3199.082, 3153.432, 3141.371, 3173.204, 3171.221, 3153.338, 3150.595, 3185.291, 3293.399, 3291.756, 3306.652, 3307.114, 3302.187, 3284.747, 3268.0, 3239.841, 3236.579, 3279.099, 3224.487, 3169.014, 3124.973, 3051.087, 3086.591, 3066.912, 3004.763, 2960.381, 2894.899, 2924.275, 2855.489, 2906.143, 2939.793, 2967.624, 3030.723, 2987.201, 3022.253, 2983.984, 2979.099, 2995.35, 3071.899, 3115.387, 3074.291, 3059.915, 3174.097, 3129.306, 3178.041, 3205.605, 3140.447, 3152.453, 3151.495, 3190.997, 3227.272, 3220.684, 3198.089, 3148.814, 3141.457, 3200.115, 3197.712, 3233.902, 3223.765, 3212.359, 3187.458, 3206.983, 3218.174, 3256.308, 3279.143, 3296.659, 3300.463, 3349.953, 3322.304, 3351.481, 3366.867, 3372.004, 3404.039, 3396.149, 3345.829, 3347.406, 3351.343, 3302.645, 3355.085, 3407.406, 3387.832, 3328.343, 3316.222, 3297.93, 3277.876, 3259.036, 3246.178], "lines": [{"k": "dn", "ai": 1009, "ap": 3446.97, "s": -4.6337, "t": 2, "role": "safe"}, {"k": "up", "ai": 990, "ap": 3119.894, "s": 7.1612, "t": 3, "role": "action"}, {"k": "up", "ai": 666, "ap": 2863.709, "s": 0.5949, "t": 2, "role": "broken", "bi": 57}, {"k": "up", "ai": 666, "ap": 2863.709, "s": 0.6998, "t": 2, "role": "broken", "bi": 57}], "trades": [{"ei": 12, "ep": 3237.25, "xi": 25, "xp": 3247.88, "d": "L", "p": 10.6, "l": 1, "m": 0}, {"ei": 53, "ep": 3124.97, "xi": 54, "xp": 3062.81, "d": "L", "p": -62.2, "l": 1, "m": 1}, {"ei": 57, "ep": 3004.76, "xi": 65, "xp": 2994.96, "d": "S", "p": 19.6, "l": 2, "m": 0}, {"ei": 83, "ep": 3227.27, "xi": 86, "xp": 3148.02, "d": "L", "p": -158.5, "l": 2, "m": 0}, {"ei": 93, "ep": 3187.46, "xi": 94, "xp": 3214.65, "d": "L", "p": 27.2, "l": 1, "m": 1}, {"ei": 99, "ep": 3300.46, "xi": 100, "xp": 3347.83, "d": "S", "p": -47.4, "l": 1, "m": 1}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -63.9, -63.9, -63.9, -98.9, -98.9, -98.9, -98.9, -98.9, -85.6, -85.6, -37.3, -37.3, -74.4, -69.3, -95.5, -95.5, -95.5, -95.5, -97.3, -97.3, 8.0, 8.0, -44.8, -44.8, -44.8, -22.9, -22.9, 46.7, 46.7, 14.5, 14.5, -13.2, -9.7, -16.1, -16.1, 19.1, 121.9, 121.9, 121.9, 121.9, 84.7, 84.7, 58.8, 66.4, 66.4, 72.2, 72.2, 78.5, 78.5, 78.5, 78.5, 78.5, 151.1, 151.1, 151.1, 157.9, 157.9, 157.9, 157.9, 131.1, 91.7, 91.7, 60.5, 60.5, 60.5, 66.9, 79.9, 92.8, 92.8, 92.8, 88.3, 88.3, 88.3, 58.1, 30.3, 30.3, 37.5, 8.1, -65.4, -65.4, -65.4, -124.5, -154.4, -185.0, -185.0, -190.5, -190.5, -125.0, -125.0, -125.0, -95.4, -95.4, -70.5, -70.5, -70.5, -158.8, -158.8, -158.8, -158.8, -158.8, -148.2, -148.2, -148.2, -148.2, -210.3, -200.5, -200.5, -200.5, -279.8, -299.9, -299.9, -299.9], "eq_n": 1023, "dd": 558.6}, "stats_reg": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 53, "longs": 26, "shorts": 27, "wins": 26, "losses": 27, "win_rate": 49.1, "pf": 0.69, "pnl": -372.6, "pnl_per_lot": -299.9, "avg_trade": -7.0, "avg_per_lot": -5.66, "max_dd": 558.6, "max_dd_range": ["2024-09-24", "2026-08-24"], "avg_held": 6.8, "avg_lots": 1.17, "be_hits": 19, "splits": 9, "mr_trades": 19, "best": {"pnl": 145.1, "date": "2024-06-24", "dir": "short"}, "worst": {"pnl": -158.5, "date": "2026-07-30", "dir": "long"}, "open_pos": "short"}}, {"name": "科创50", "code": "sh000688", "period": "日线", "price": 1652.63, "prev_close": 1606.29, "provisional": false, "bar_state": "已收盘", "chg_pct": 2.89, "atr": 46.467, "atr_pct": 2.81, "adx": 19.94, "adx_prev": 21.27, "adx_rising": false, "adx_dir": "下行", "adx_dir_tag": "弱", "trend": "弱趋势", "strength": "弱", "adx_hi": false, "lots_suggest": 1, "cooldown_bars": 2, "be_trigger_r": 0.38, "be_offset_atr": 0.15, "strategy": "tori策略（Tori趋势线 + ADX择时手数 + FVG分批 + 0.38R保本）", "fvg_cand": {"long": {"j": 1022, "edge": 1622.35, "near": 1630.1, "date": "2026-09-18", "stop": 1622.35, "src": "fvg", "capped": false, "kind": "bull", "dist": 30.28, "dist_atr": 0.65}, "short": {"j": 1001, "edge": 1753.97, "near": 1694.36, "date": "2026-08-20", "stop": 1753.97, "src": "fvg", "capped": false, "kind": "bear", "dist": 101.34, "dist_atr": 2.18}}, "recommendation": "看多", "lots": 1, "entry": 1652.63, "entry_time": "2026-09-18", "held_bars": 0, "stop_loss": 1523.34, "stop_src": "line", "fvg_stop": null, "fvg_stop_src": null, "be_line": 1659.6, "be_hit": false, "risk_pts": 129.29, "entry_adx": 19.94, "entry_lots": 1, "sl_dist": 129.29, "take_profit": null, "risk_reward": null, "exit_rule": "收盘跌回安全线下方 → 离场", "lines": {"safety": {"p": 1527.99, "slope": 2.3566, "slope_pct": 0.1542, "dir": "向上", "touches": 2, "a_date": "2026-04-02", "b_date": "2026-09-11"}, "action": {"p": 1588.32, "slope": -8.2449, "slope_pct": -0.5191, "dir": "向下", "touches": 3, "a_date": "2026-07-22", "b_date": "2026-08-28"}}, "fvg": null, "lines_safety_p": 1527.99, "lines_action_p": 1588.32, "reasons": [{"t": "ADX=19.9，在 20 以下 → 趋势强弱判定为 弱趋势", "c": ""}, {"t": "开仓于 2026-09-18（破下降趋势线入场），入场 1652.63，已持有 0 根", "c": "pos"}, {"t": "行动线（入场依据）：下降 线，触点 3，现在 已翻到价格下方 位于 1588.32", "c": "pos"}, {"t": "安全线（止损依据）：上升 线，触点 2，现在 1527.99（价格在上方）", "c": "pos"}, {"t": "主线止损 1523.34（距现价 129.29 点）｜风险 129.29 点", "c": ""}, {"t": "本笔未分批（只有 1 手）", "c": ""}, {"t": "保本规则：浮盈 ≥ 0.38R 后止损抬到 1659.60（保本线）（未触发）", "c": ""}, {"t": "离场规则：收盘跌回安全线下方就走；无固定止盈，趋势线不断推进就一路持有", "c": ""}, {"t": "手数：本笔开仓时 ADX=19.9 → 1 手；当下 ADX=19.9（不满足 >20 且上行）若新开仓建议 1 手", "c": ""}], "indicators": {"adx": 19.94, "adx_prev": 21.27, "adx_dir": "下行", "adx_zone": "弱趋势", "adx_hi": false, "atr": 46.467, "atr_pct": 2.81, "lots": 1, "lots_now": 1, "be_trigger_r": 0.38, "n_lines": 323, "n_lines_up": 149, "n_lines_dn": 174, "fvg_max_age": 30, "fvg_cap_atr": 1.0, "kline_bars": 1023}, "regime_now": "BEAR", "regime_dur": 4, "regime_strip": "SSSSSSSSSSTTTTTTBBBBBBBBBBBBBBBBBBBBBBBBBBBBBTTRRRRRRBBBBBBBBBBBBBBBBBBBBBBTTTTTTTTTTTTSSSSSRRRRRRRRRRRSSSSSSTTTTTTTSSSS", "chart": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [1278.993, 1283.899, 1290.638, 1294.63, 1270.936, 1261.711, 1317.276, 1335.287, 1363.577, 1358.463, 1398.4, 1415.392, 1406.319, 1414.873, 1426.893, 1445.204, 1420.776, 1466.124, 1443.037, 1478.314, 1497.322, 1474.117, 1511.388, 1634.313, 1663.159, 1653.311, 1687.643, 1708.211, 1684.368, 1792.342, 1724.355, 1690.382, 1697.402, 1764.213, 1866.287, 1790.744, 1791.67, 1877.388, 1875.422, 1805.113, 1850.273, 1751.232, 1676.309, 1697.659, 1700.312, 1706.531, 1587.969, 1630.232, 1662.846, 1644.603, 1726.005, 1687.67, 1751.705, 1729.228, 1837.07, 1922.474, 1929.266, 1896.341, 2004.775, 2034.433, 2039.667, 2132.882, 2205.656, 2059.898, 1978.755, 2015.181, 1965.795, 2022.451, 2047.238, 2190.178, 2038.362, 1994.44, 2021.578, 1869.936, 1829.981, 1764.593, 1747.49, 1874.779, 1876.613, 1766.259, 1780.72, 1755.867, 1704.585, 1653.467, 1721.355, 1619.294, 1569.623, 1615.261, 1651.108, 1697.37, 1740.136, 1713.258, 1720.364, 1763.456, 1738.817, 1721.546, 1786.369, 1738.913, 1685.483, 1649.283, 1651.881, 1584.516, 1605.741, 1646.841, 1684.723, 1623.201, 1679.895, 1623.527, 1634.52, 1627.951, 1596.578, 1614.188, 1608.198, 1569.461, 1548.703, 1526.803, 1524.27, 1558.376, 1607.847, 1634.635], "h": [1294.543, 1296.034, 1302.871, 1294.63, 1272.837, 1286.53, 1352.689, 1362.907, 1382.937, 1396.003, 1409.848, 1433.354, 1424.173, 1433.795, 1451.39, 1445.539, 1451.461, 1467.699, 1472.957, 1515.282, 1525.342, 1495.009, 1580.515, 1715.081, 1682.222, 1655.572, 1727.305, 1747.172, 1771.492, 1800.606, 1769.804, 1748.104, 1776.256, 1835.221, 1892.595, 1797.649, 1899.967, 1880.648, 1901.966, 1854.52, 1855.256, 1753.02, 1710.98, 1776.202, 1759.984, 1735.078, 1634.033, 1666.481, 1722.334, 1676.531, 1730.893, 1748.512, 1766.138, 1841.365, 1937.301, 1963.327, 1982.906, 1997.905, 2076.882, 2076.465, 2127.801, 2214.613, 2255.248, 2105.291, 2039.306, 2022.91, 2039.598, 2078.642, 2188.982, 2233.538, 2110.179, 2026.471, 2028.652, 1947.247, 1844.379, 1776.073, 1904.858, 1934.605, 1876.986, 1831.276, 1816.43, 1797.584, 1711.579, 1671.509, 1731.206, 1621.993, 1631.012, 1715.276, 1727.735, 1747.737, 1752.931, 1753.137, 1747.945, 1782.782, 1741.347, 1788.85, 1798.779, 1748.523, 1694.364, 1675.823, 1651.96, 1622.205, 1644.72, 1697.029, 1711.994, 1684.387, 1684.021, 1635.763, 1636.315, 1637.101, 1626.759, 1624.688, 1609.702, 1588.003, 1556.677, 1542.253, 1578.431, 1622.351, 1631.022, 1671.013], "l": [1269.319, 1256.327, 1282.313, 1254.625, 1254.759, 1261.711, 1316.634, 1333.012, 1362.397, 1358.463, 1387.418, 1399.754, 1402.196, 1413.576, 1426.034, 1415.599, 1420.244, 1419.009, 1417.206, 1466.664, 1479.673, 1451.712, 1511.388, 1631.651, 1646.944, 1625.608, 1669.733, 1687.963, 1677.544, 1723.699, 1669.987, 1684.901, 1670.358, 1764.213, 1759.939, 1747.139, 1774.194, 1824.322, 1809.705, 1796.035, 1727.621, 1662.821, 1641.167, 1697.36, 1697.221, 1659.479, 1578.179, 1607.578, 1632.327, 1631.936, 1656.845, 1658.324, 1729.037, 1725.901, 1836.038, 1879.59, 1890.163, 1886.741, 2000.801, 1976.923, 2013.512, 2113.95, 2120.363, 1978.32, 1948.172, 1913.822, 1950.979, 1961.638, 2023.544, 2064.976, 1974.055, 1895.555, 1908.178, 1828.573, 1698.323, 1646.387, 1663.85, 1836.107, 1770.532, 1748.797, 1724.466, 1675.988, 1608.141, 1561.996, 1635.685, 1549.739, 1556.112, 1615.261, 1651.108, 1686.661, 1704.084, 1699.915, 1709.164, 1715.335, 1690.675, 1718.605, 1753.971, 1653.668, 1638.295, 1640.623, 1575.275, 1564.765, 1598.441, 1637.332, 1661.484, 1620.361, 1646.637, 1607.187, 1596.624, 1566.873, 1579.024, 1585.124, 1573.033, 1562.338, 1516.205, 1516.522, 1524.27, 1552.236, 1598.959, 1630.104], "c": [1289.78, 1256.327, 1298.198, 1262.182, 1256.21, 1274.015, 1352.689, 1343.946, 1364.495, 1375.287, 1405.072, 1406.322, 1422.228, 1423.351, 1450.521, 1426.677, 1451.139, 1432.592, 1453.685, 1508.385, 1488.661, 1493.505, 1571.065, 1656.946, 1678.887, 1640.46, 1716.691, 1723.784, 1770.147, 1725.093, 1696.261, 1709.963, 1775.135, 1832.022, 1764.174, 1790.771, 1896.037, 1867.709, 1815.451, 1844.249, 1751.323, 1663.694, 1690.558, 1726.181, 1738.059, 1668.329, 1596.566, 1663.109, 1652.224, 1662.436, 1663.221, 1748.326, 1758.424, 1840.821, 1911.513, 1948.928, 1916.212, 1989.426, 2066.331, 2032.284, 2126.011, 2207.865, 2153.043, 1987.291, 1975.6, 1996.103, 2001.586, 2016.233, 2185.825, 2064.976, 1994.319, 2009.73, 1924.274, 1846.877, 1715.404, 1718.69, 1903.161, 1860.085, 1789.694, 1787.196, 1807.951, 1693.479, 1678.738, 1588.415, 1635.962, 1552.89, 1616.358, 1693.668, 1701.292, 1744.024, 1737.774, 1709.503, 1736.991, 1717.748, 1717.679, 1788.85, 1790.874, 1667.516, 1652.972, 1653.555, 1602.337, 1604.593, 1632.02, 1693.48, 1662.149, 1684.387, 1647.535, 1617.597, 1611.165, 1577.361, 1615.531, 1590.995, 1580.059, 1569.218, 1553.394, 1528.266, 1551.958, 1616.186, 1606.287, 1652.631], "lines": [{"k": "dn", "ai": 980, "ap": 1934.605, "s": -8.2449, "t": 3, "role": "action"}, {"k": "up", "ai": 906, "ap": 1254.625, "s": 2.3566, "t": 2, "role": "safe"}, {"k": "dn", "ai": 965, "ap": 2255.248, "s": -3.1014, "t": 2, "role": ""}, {"k": "up", "ai": 899, "ap": 1249.011, "s": 0.802, "t": 2, "role": ""}, {"k": "up", "ai": 899, "ap": 1249.011, "s": 2.2644, "t": 3, "role": ""}, {"k": "up", "ai": 770, "ap": 1210.867, "s": 0.2957, "t": 2, "role": ""}, {"k": "up", "ai": 770, "ap": 1210.867, "s": 0.3218, "t": 3, "role": ""}, {"k": "up", "ai": 751, "ap": 1042.839, "s": 1.3931, "t": 2, "role": ""}, {"k": "up", "ai": 540, "ap": 640.742, "s": 1.7604, "t": 2, "role": "broken", "bi": 1}, {"k": "up", "ai": 906, "ap": 1254.625, "s": 2.9457, "t": 3, "role": "broken", "bi": 114}], "trades": [{"ei": -7, "ep": 1339.03, "xi": 6, "xp": 1325.23, "d": "S", "p": 27.6, "l": 2, "m": 0}, {"ei": 9, "ep": 1375.29, "xi": 46, "xp": 1587.97, "d": "L", "p": 212.7, "l": 1, "m": 0}, {"ei": 72, "ep": 1924.27, "xi": 76, "xp": 1904.55, "d": "S", "p": 19.7, "l": 1, "m": 0}, {"ei": 83, "ep": 1588.41, "xi": 84, "xp": 1722.16, "d": "S", "p": -267.5, "l": 2, "m": 0}, {"ei": 87, "ep": 1693.67, "xi": 100, "xp": 1593.56, "d": "L", "p": -100.1, "l": 1, "m": 0}, {"ei": 105, "ep": 1684.39, "xi": 107, "xp": 1619.16, "d": "L", "p": -65.2, "l": 1, "m": 0}, {"ei": 112, "ep": 1580.06, "xi": 116, "xp": 1552.76, "d": "S", "p": 27.3, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 92.5, 92.5, 75.9, 75.9, 75.9, 75.9, 100.7, 100.7, 100.7, 100.7, 132.8, 132.8, 135.2, 119.2, 119.2, 119.2, 205.8, 205.8, 205.8, 189.8, 167.9, 167.9, 180.1, 180.1, 180.1, 163.5, 163.5, 163.5, 163.5, 163.5, 163.5, 163.5, 163.5, 163.5, 163.5, 163.5, 156.7, 156.7, 156.7, 156.7, 156.7, 146.1, 146.1, 146.1, 146.1, 203.2, 203.2, 207.2, 207.2, 195.2, 195.2, 195.2, 150.0, 144.7, 144.7, 150.6, 157.9, 157.9, 157.9, 157.9, 162.4, 145.7, 145.7, 148.9, 148.9, 152.5, 144.1, 144.1, 144.1, 189.9, 189.9, 231.9, 231.9, 241.0, 241.0, 241.0, 243.0, 247.2, 247.2, 236.1, 236.1, 236.1, 236.1, 236.1, 236.1, 236.1, 236.1, 582.2, 582.2, 580.5, 580.5, 562.7, 566.8, 566.8, 566.8, 566.8, 418.5, 418.5, 418.5, 432.3, 432.3, 432.3, 432.3, 432.3, 644.9, 644.9, 644.9, 664.7, 530.9, 530.9, 430.8, 365.6, 392.9], "eq_n": 1023, "dd": 484.8}, "stats": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 43, "longs": 17, "shorts": 26, "wins": 24, "losses": 19, "win_rate": 55.8, "pf": 1.48, "pnl": 465.1, "pnl_per_lot": 392.9, "avg_trade": 10.8, "avg_per_lot": 9.14, "max_dd": 484.8, "max_dd_range": ["2025-11-03", "2026-09-02"], "avg_held": 10.9, "avg_lots": 1.16, "be_hits": 24, "splits": 7, "mr_trades": 0, "best": {"pnl": 692.1, "date": "2025-07-25", "dir": "long"}, "worst": {"pnl": -296.7, "date": "2026-01-23", "dir": "long"}, "open_pos": "long"}, "chart_reg": {"i0": 903, "d": ["2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"], "o": [1278.993, 1283.899, 1290.638, 1294.63, 1270.936, 1261.711, 1317.276, 1335.287, 1363.577, 1358.463, 1398.4, 1415.392, 1406.319, 1414.873, 1426.893, 1445.204, 1420.776, 1466.124, 1443.037, 1478.314, 1497.322, 1474.117, 1511.388, 1634.313, 1663.159, 1653.311, 1687.643, 1708.211, 1684.368, 1792.342, 1724.355, 1690.382, 1697.402, 1764.213, 1866.287, 1790.744, 1791.67, 1877.388, 1875.422, 1805.113, 1850.273, 1751.232, 1676.309, 1697.659, 1700.312, 1706.531, 1587.969, 1630.232, 1662.846, 1644.603, 1726.005, 1687.67, 1751.705, 1729.228, 1837.07, 1922.474, 1929.266, 1896.341, 2004.775, 2034.433, 2039.667, 2132.882, 2205.656, 2059.898, 1978.755, 2015.181, 1965.795, 2022.451, 2047.238, 2190.178, 2038.362, 1994.44, 2021.578, 1869.936, 1829.981, 1764.593, 1747.49, 1874.779, 1876.613, 1766.259, 1780.72, 1755.867, 1704.585, 1653.467, 1721.355, 1619.294, 1569.623, 1615.261, 1651.108, 1697.37, 1740.136, 1713.258, 1720.364, 1763.456, 1738.817, 1721.546, 1786.369, 1738.913, 1685.483, 1649.283, 1651.881, 1584.516, 1605.741, 1646.841, 1684.723, 1623.201, 1679.895, 1623.527, 1634.52, 1627.951, 1596.578, 1614.188, 1608.198, 1569.461, 1548.703, 1526.803, 1524.27, 1558.376, 1607.847, 1634.635], "h": [1294.543, 1296.034, 1302.871, 1294.63, 1272.837, 1286.53, 1352.689, 1362.907, 1382.937, 1396.003, 1409.848, 1433.354, 1424.173, 1433.795, 1451.39, 1445.539, 1451.461, 1467.699, 1472.957, 1515.282, 1525.342, 1495.009, 1580.515, 1715.081, 1682.222, 1655.572, 1727.305, 1747.172, 1771.492, 1800.606, 1769.804, 1748.104, 1776.256, 1835.221, 1892.595, 1797.649, 1899.967, 1880.648, 1901.966, 1854.52, 1855.256, 1753.02, 1710.98, 1776.202, 1759.984, 1735.078, 1634.033, 1666.481, 1722.334, 1676.531, 1730.893, 1748.512, 1766.138, 1841.365, 1937.301, 1963.327, 1982.906, 1997.905, 2076.882, 2076.465, 2127.801, 2214.613, 2255.248, 2105.291, 2039.306, 2022.91, 2039.598, 2078.642, 2188.982, 2233.538, 2110.179, 2026.471, 2028.652, 1947.247, 1844.379, 1776.073, 1904.858, 1934.605, 1876.986, 1831.276, 1816.43, 1797.584, 1711.579, 1671.509, 1731.206, 1621.993, 1631.012, 1715.276, 1727.735, 1747.737, 1752.931, 1753.137, 1747.945, 1782.782, 1741.347, 1788.85, 1798.779, 1748.523, 1694.364, 1675.823, 1651.96, 1622.205, 1644.72, 1697.029, 1711.994, 1684.387, 1684.021, 1635.763, 1636.315, 1637.101, 1626.759, 1624.688, 1609.702, 1588.003, 1556.677, 1542.253, 1578.431, 1622.351, 1631.022, 1671.013], "l": [1269.319, 1256.327, 1282.313, 1254.625, 1254.759, 1261.711, 1316.634, 1333.012, 1362.397, 1358.463, 1387.418, 1399.754, 1402.196, 1413.576, 1426.034, 1415.599, 1420.244, 1419.009, 1417.206, 1466.664, 1479.673, 1451.712, 1511.388, 1631.651, 1646.944, 1625.608, 1669.733, 1687.963, 1677.544, 1723.699, 1669.987, 1684.901, 1670.358, 1764.213, 1759.939, 1747.139, 1774.194, 1824.322, 1809.705, 1796.035, 1727.621, 1662.821, 1641.167, 1697.36, 1697.221, 1659.479, 1578.179, 1607.578, 1632.327, 1631.936, 1656.845, 1658.324, 1729.037, 1725.901, 1836.038, 1879.59, 1890.163, 1886.741, 2000.801, 1976.923, 2013.512, 2113.95, 2120.363, 1978.32, 1948.172, 1913.822, 1950.979, 1961.638, 2023.544, 2064.976, 1974.055, 1895.555, 1908.178, 1828.573, 1698.323, 1646.387, 1663.85, 1836.107, 1770.532, 1748.797, 1724.466, 1675.988, 1608.141, 1561.996, 1635.685, 1549.739, 1556.112, 1615.261, 1651.108, 1686.661, 1704.084, 1699.915, 1709.164, 1715.335, 1690.675, 1718.605, 1753.971, 1653.668, 1638.295, 1640.623, 1575.275, 1564.765, 1598.441, 1637.332, 1661.484, 1620.361, 1646.637, 1607.187, 1596.624, 1566.873, 1579.024, 1585.124, 1573.033, 1562.338, 1516.205, 1516.522, 1524.27, 1552.236, 1598.959, 1630.104], "c": [1289.78, 1256.327, 1298.198, 1262.182, 1256.21, 1274.015, 1352.689, 1343.946, 1364.495, 1375.287, 1405.072, 1406.322, 1422.228, 1423.351, 1450.521, 1426.677, 1451.139, 1432.592, 1453.685, 1508.385, 1488.661, 1493.505, 1571.065, 1656.946, 1678.887, 1640.46, 1716.691, 1723.784, 1770.147, 1725.093, 1696.261, 1709.963, 1775.135, 1832.022, 1764.174, 1790.771, 1896.037, 1867.709, 1815.451, 1844.249, 1751.323, 1663.694, 1690.558, 1726.181, 1738.059, 1668.329, 1596.566, 1663.109, 1652.224, 1662.436, 1663.221, 1748.326, 1758.424, 1840.821, 1911.513, 1948.928, 1916.212, 1989.426, 2066.331, 2032.284, 2126.011, 2207.865, 2153.043, 1987.291, 1975.6, 1996.103, 2001.586, 2016.233, 2185.825, 2064.976, 1994.319, 2009.73, 1924.274, 1846.877, 1715.404, 1718.69, 1903.161, 1860.085, 1789.694, 1787.196, 1807.951, 1693.479, 1678.738, 1588.415, 1635.962, 1552.89, 1616.358, 1693.668, 1701.292, 1744.024, 1737.774, 1709.503, 1736.991, 1717.748, 1717.679, 1788.85, 1790.874, 1667.516, 1652.972, 1653.555, 1602.337, 1604.593, 1632.02, 1693.48, 1662.149, 1684.387, 1647.535, 1617.597, 1611.165, 1577.361, 1615.531, 1590.995, 1580.059, 1569.218, 1553.394, 1528.266, 1551.958, 1616.186, 1606.287, 1652.631], "lines": [{"k": "dn", "ai": 980, "ap": 1934.605, "s": -8.2449, "t": 3, "role": "action"}, {"k": "up", "ai": 906, "ap": 1254.625, "s": 2.3566, "t": 2, "role": "safe"}, {"k": "dn", "ai": 965, "ap": 2255.248, "s": -3.1014, "t": 2, "role": ""}, {"k": "up", "ai": 899, "ap": 1249.011, "s": 0.802, "t": 2, "role": ""}, {"k": "up", "ai": 899, "ap": 1249.011, "s": 2.2644, "t": 3, "role": ""}, {"k": "up", "ai": 770, "ap": 1210.867, "s": 0.2957, "t": 2, "role": ""}, {"k": "up", "ai": 770, "ap": 1210.867, "s": 0.3218, "t": 3, "role": ""}, {"k": "up", "ai": 751, "ap": 1042.839, "s": 1.3931, "t": 2, "role": ""}, {"k": "up", "ai": 540, "ap": 640.742, "s": 1.7604, "t": 2, "role": "broken", "bi": 1}, {"k": "up", "ai": 906, "ap": 1254.625, "s": 2.9457, "t": 3, "role": "broken", "bi": 114}], "trades": [{"ei": -7, "ep": 1339.03, "xi": 6, "xp": 1325.23, "d": "S", "p": 27.6, "l": 2, "m": 0}, {"ei": 9, "ep": 1375.29, "xi": 46, "xp": 1587.97, "d": "L", "p": 212.7, "l": 1, "m": 0}, {"ei": 72, "ep": 1924.27, "xi": 76, "xp": 1904.55, "d": "S", "p": 19.7, "l": 1, "m": 0}, {"ei": 83, "ep": 1588.41, "xi": 84, "xp": 1722.16, "d": "S", "p": -267.5, "l": 2, "m": 0}, {"ei": 87, "ep": 1693.67, "xi": 100, "xp": 1593.56, "d": "L", "p": -100.1, "l": 1, "m": 0}, {"ei": 105, "ep": 1684.39, "xi": 107, "xp": 1619.16, "d": "L", "p": -65.2, "l": 1, "m": 0}, {"ei": 112, "ep": 1580.06, "xi": 116, "xp": 1552.76, "d": "S", "p": 27.3, "l": 1, "m": 0}], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 92.5, 92.5, 75.9, 75.9, 75.9, 75.9, 100.7, 100.7, 100.7, 100.7, 132.8, 132.8, 135.2, 122.7, 122.7, 122.7, 122.7, 122.7, 122.7, 191.6, 173.8, 173.8, 155.1, 155.1, 155.1, 138.5, 138.5, 138.5, 138.5, 138.5, 138.5, 138.5, 138.5, 138.5, 138.5, 126.1, 126.1, 126.1, 126.1, 126.1, 126.1, 115.5, 115.5, 115.5, 115.5, 107.1, 107.1, 92.8, 94.5, 107.1, 107.1, 107.1, 62.0, 62.0, 45.5, 45.5, 52.7, 52.7, 52.7, 52.7, -2.6, -1.7, -1.7, -31.2, -51.3, -51.3, -70.3, -68.9, -65.2, -65.2, -65.2, -18.2, -18.2, -9.1, -9.1, -9.1, -18.0, -33.7, -33.7, -48.9, -48.9, -48.9, -48.9, -48.9, -48.9, -48.9, -48.9, 297.2, 297.2, 253.6, 253.6, 204.5, 204.5, 204.5, 204.5, 204.5, 56.1, 56.1, 56.1, 69.9, 69.9, 69.9, 69.9, 69.9, 282.6, 282.6, 282.6, 302.4, 168.6, 168.6, 68.5, 3.3, 30.6], "eq_n": 1023, "dd": 562.2}, "stats_reg": {"bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "trades": 43, "longs": 22, "shorts": 21, "wins": 18, "losses": 25, "win_rate": 41.9, "pf": 1.09, "pnl": 108.4, "pnl_per_lot": 30.6, "avg_trade": 2.5, "avg_per_lot": 0.71, "max_dd": 562.2, "max_dd_range": ["2025-11-03", "2026-09-02"], "avg_held": 10.0, "avg_lots": 1.09, "be_hits": 15, "splits": 4, "mr_trades": 13, "best": {"pnl": 692.1, "date": "2025-07-25", "dir": "long"}, "worst": {"pnl": -296.7, "date": "2026-01-23", "dir": "long"}, "open_pos": "long"}}], "portfolio": {"d": ["2022-07-06", "2022-07-19", "2022-07-29", "2022-08-11", "2022-08-23", "2022-09-05", "2022-09-19", "2022-09-29", "2022-10-19", "2022-10-31", "2022-11-11", "2022-11-23", "2022-12-06", "2022-12-19", "2022-12-29", "2023-01-12", "2023-01-31", "2023-02-13", "2023-02-24", "2023-03-08", "2023-03-21", "2023-03-31", "2023-04-14", "2023-04-27", "2023-05-12", "2023-05-25", "2023-06-06", "2023-06-19", "2023-07-03", "2023-07-14", "2023-07-27", "2023-08-08", "2023-08-21", "2023-08-31", "2023-09-13", "2023-09-26", "2023-10-16", "2023-10-27", "2023-11-08", "2023-11-21", "2023-12-04", "2023-12-14", "2023-12-27", "2024-01-09", "2024-01-22", "2024-02-01", "2024-02-22", "2024-03-06", "2024-03-18", "2024-03-29", "2024-04-12", "2024-04-25", "2024-05-13", "2024-05-23", "2024-06-05", "2024-06-18", "2024-07-01", "2024-07-12", "2024-07-24", "2024-08-06", "2024-08-16", "2024-08-29", "2024-09-10", "2024-09-25", "2024-10-15", "2024-10-25", "2024-11-07", "2024-11-19", "2024-12-02", "2024-12-13", "2024-12-25", "2025-01-08", "2025-01-20", "2025-02-10", "2025-02-21", "2025-03-05", "2025-03-18", "2025-03-28", "2025-04-11", "2025-04-23", "2025-05-09", "2025-05-22", "2025-06-04", "2025-06-17", "2025-06-27", "2025-07-10", "2025-07-23", "2025-08-04", "2025-08-15", "2025-08-27", "2025-09-09", "2025-09-22", "2025-10-10", "2025-10-23", "2025-11-04", "2025-11-17", "2025-11-27", "2025-12-10", "2025-12-23", "2026-01-06", "2026-01-19", "2026-01-29", "2026-02-11", "2026-03-04", "2026-03-16", "2026-03-27", "2026-04-09", "2026-04-22", "2026-05-08", "2026-05-20", "2026-06-02", "2026-06-12", "2026-06-26", "2026-07-08", "2026-07-21", "2026-08-03", "2026-08-13", "2026-08-26", "2026-09-07", "2026-09-18"], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.3, 16.7, 6.1, 4.5, 32.9, 8.1, -32.8, -24.8, -47.3, -55.9, -53.7, -53.1, 8.8, -16.6, -9.9, -13.1, -4.1, 9.8, 35.4, 35.4, 72.4, 85.6, 79.0, 72.2, 29.5, 28.6, -15.4, -72.1, -50.9, -59.7, -76.7, -92.7, -92.7, -121.2, -120.1, -124.7, -98.2, -117.0, -109.8, -105.9, 75.2, 99.3, 88.8, 85.9, 100.1, 145.0, 148.1, 153.5, 154.8, 156.6, 173.3, 194.4, 275.0, 244.6, 256.1, 274.2, 271.3, 253.0, 253.0, 253.0, 253.0, 789.4, 757.2, 749.6, 766.5, 736.9, 737.5, 755.9, 795.7, 797.4, 782.2, 760.7, 766.9, 803.7, 839.3, 834.0, 846.5, 844.6, 841.6, 841.6, 840.5, 866.6, 896.5, 890.0, 916.5, 916.5, 907.5, 966.9, 1027.8, 1038.7, 1023.8, 979.8, 942.2, 942.8, 963.9, 997.1, 1054.2, 1023.3, 1022.8, 992.6, 1056.0, 1051.9, 1066.2, 1066.2, 1186.6, 1234.4, 1150.1, 1150.1, 1167.8, 1133.4, 1135.5, 1120.4, 1096.5, 1088.2], "stats": {"n_inst": 6, "bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "pnl_per_lot": 1088.2, "max_dd": 220.9, "win_inst": 5, "win_inst_pct": 83.3, "avg_inst": 1088.2, "best_inst": {"name": "中证1000", "pnl": 3566.7}, "worst_inst": {"name": "红利指数", "pnl": -13.9}}, "inst": [{"code": "sh000300", "name": "沪深300", "pnl": 594.4954683319047}, {"code": "sh000852", "name": "中证1000", "pnl": 3566.7125722136475}, {"code": "sz399006", "name": "创业板指", "pnl": 1039.580136179594}, {"code": "sh000001", "name": "上证指数", "pnl": 949.4593539977263}, {"code": "sh000015", "name": "红利指数", "pnl": -13.850465980233139}, {"code": "sh000688", "name": "科创50", "pnl": 392.89652217179173}]}, "portfolio_reg": {"d": ["2022-07-06", "2022-07-19", "2022-07-29", "2022-08-11", "2022-08-23", "2022-09-05", "2022-09-19", "2022-09-29", "2022-10-19", "2022-10-31", "2022-11-11", "2022-11-23", "2022-12-06", "2022-12-19", "2022-12-29", "2023-01-12", "2023-01-31", "2023-02-13", "2023-02-24", "2023-03-08", "2023-03-21", "2023-03-31", "2023-04-14", "2023-04-27", "2023-05-12", "2023-05-25", "2023-06-06", "2023-06-19", "2023-07-03", "2023-07-14", "2023-07-27", "2023-08-08", "2023-08-21", "2023-08-31", "2023-09-13", "2023-09-26", "2023-10-16", "2023-10-27", "2023-11-08", "2023-11-21", "2023-12-04", "2023-12-14", "2023-12-27", "2024-01-09", "2024-01-22", "2024-02-01", "2024-02-22", "2024-03-06", "2024-03-18", "2024-03-29", "2024-04-12", "2024-04-25", "2024-05-13", "2024-05-23", "2024-06-05", "2024-06-18", "2024-07-01", "2024-07-12", "2024-07-24", "2024-08-06", "2024-08-16", "2024-08-29", "2024-09-10", "2024-09-25", "2024-10-15", "2024-10-25", "2024-11-07", "2024-11-19", "2024-12-02", "2024-12-13", "2024-12-25", "2025-01-08", "2025-01-20", "2025-02-10", "2025-02-21", "2025-03-05", "2025-03-18", "2025-03-28", "2025-04-11", "2025-04-23", "2025-05-09", "2025-05-22", "2025-06-04", "2025-06-17", "2025-06-27", "2025-07-10", "2025-07-23", "2025-08-04", "2025-08-15", "2025-08-27", "2025-09-09", "2025-09-22", "2025-10-10", "2025-10-23", "2025-11-04", "2025-11-17", "2025-11-27", "2025-12-10", "2025-12-23", "2026-01-06", "2026-01-19", "2026-01-29", "2026-02-11", "2026-03-04", "2026-03-16", "2026-03-27", "2026-04-09", "2026-04-22", "2026-05-08", "2026-05-20", "2026-06-02", "2026-06-12", "2026-06-26", "2026-07-08", "2026-07-21", "2026-08-03", "2026-08-13", "2026-08-26", "2026-09-07", "2026-09-18"], "eq": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.3, 16.7, 6.1, 3.3, 31.7, 12.6, -28.3, -20.3, -2.2, 9.1, 6.8, 12.1, 75.1, 56.9, 50.7, 57.5, 62.2, 62.2, 88.9, 88.9, 91.6, 105.5, 98.7, 95.6, 104.2, 106.0, 94.3, 97.9, 116.7, 122.9, 112.9, 90.8, 90.8, 62.3, 58.9, 57.8, 56.5, 62.6, 87.0, 88.4, 269.6, 269.6, 252.9, 250.0, 247.6, 286.8, 270.2, 284.0, 277.2, 279.2, 300.1, 294.2, 374.8, 344.4, 356.8, 372.1, 368.3, 350.0, 350.0, 350.0, 350.0, 876.3, 847.1, 828.9, 818.8, 792.7, 792.7, 801.7, 850.3, 854.4, 839.5, 868.6, 867.1, 879.3, 901.7, 890.7, 889.0, 903.9, 893.6, 888.7, 873.9, 910.8, 940.7, 930.9, 952.4, 947.3, 939.0, 997.5, 1058.4, 1085.2, 1062.7, 1065.0, 1065.7, 1065.7, 1069.8, 1103.0, 1130.3, 1109.6, 1109.6, 1065.3, 1134.9, 1134.9, 1150.9, 1150.9, 1288.0, 1331.8, 1233.3, 1235.0, 1212.1, 1177.6, 1172.2, 1153.8, 1157.6, 1138.2], "stats": {"n_inst": 6, "bars": 1023, "start": "2022-07-06", "end": "2026-09-18", "pnl_per_lot": 1138.2, "max_dd": 200.2, "win_inst": 5, "win_inst_pct": 83.3, "avg_inst": 1138.2, "best_inst": {"name": "中证1000", "pnl": 3751.9}, "worst_inst": {"name": "红利指数", "pnl": -299.9}}, "inst": [{"code": "sh000300", "name": "沪深300", "pnl": 764.1164405031673}, {"code": "sh000852", "name": "中证1000", "pnl": 3751.897097313844}, {"code": "sz399006", "name": "创业板指", "pnl": 1370.8709459589163}, {"code": "sh000001", "name": "上证指数", "pnl": 1211.6109974926567}, {"code": "sh000015", "name": "红利指数", "pnl": -299.94657947143287}, {"code": "sh000688", "name": "科创50", "pnl": 30.57829354244143}]}}/*DATA_END*/;
+// ----- 数据加载（手动刷新，平时零请求、零计算）-----
+function showData(d, src){
+  if(!d) return;
+  render(d);
+  document.getElementById('meta').textContent =
+    '更新时间 ' + d.updated_at + ' · 周期 ' + (d.period||'') + ' · 市场' +
+    (d.market_open ? '开盘中' : '已收盘') + ' · ' + d.source;
+  document.getElementById('srcHint').textContent = src || '';
+}
+function loadLive(){
+  return fetch('./signals-0920.json', {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+loadLive().then(function(d){ showData(d, '● 实时数据'); })
+  .catch(function(){
+    if(location.protocol === 'file:'){
+      showData(EMBEDDED, '○ 内嵌快照（双击打开：刷新按钮无法联网，要看最新请点「选择信号 JSON」）');
+    } else {
+      showData(EMBEDDED, '○ 内嵌快照（本地服务器未启动，已显示最近一次数据）');
+    }
+  });
+
+document.getElementById('refreshBtn').addEventListener('click', function(){
+  var btn = this;
+  btn.disabled = true; btn.textContent = '↻ 刷新中…';
+  loadLive().then(function(d){ showData(d, '● 实时数据'); })
+    .catch(function(){
+      showData(EMBEDDED, '○ 内嵌快照（双击模式无法联网，已显示最近一次数据；要最新请点「选择信号 JSON」）');
+    })
+    .then(function(){ btn.disabled = false; btn.textContent = '↻ 刷新数据'; });
+});
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    try { showData(JSON.parse(rd.result), '● 本地文件：' + f.name); }
+    catch(err){ document.getElementById('srcHint').textContent = '✗ 文件解析失败（不是合法 JSON）'; }
+  };
+  rd.readAsText(f);
+});
+
+function fmt(n){ return (n==null) ? '—' : (Math.round(n*100)/100); }
+function num(n, d){ if(n==null) return '—'; var p=Math.pow(10, d||2); return Math.round(n*p)/p; }
+
+/* 开仓阶梯：现价 / 止损 / 保本线 / 分批腿止损 */
+function scaleHTML(markers){
+  var vals = markers.map(function(m){ return m.val; }).filter(function(v){ return v!=null; });
+  if(!vals.length) return '';
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var pad = (max-min)*0.18 || (Math.abs(max)*0.01 || 1);
+  min -= pad; max += pad;
+  var span = (max-min) || 1;
+  var parts = '<div class="scale"><div class="track"></div>';
+  markers.forEach(function(m){
+    if(m.val==null) return;
+    var p = (m.val-min)/span*100;
+    var dotColor = m.cls==='sl' ? 'var(--risk)'
+                 : (m.cls==='tp' || m.cls==='be') ? 'var(--reward)'
+                 : (m.cls==='fvgsl') ? 'var(--violet)'
+                 : (m.cls==='cur' ? 'var(--fg)' : 'var(--blue)');
+    var tri = m.cls==='cur' ? ' px' : '';
+    parts += '<div class="mk '+m.cls+'" style="left:'+Math.max(1,Math.min(99,p)).toFixed(1)+'%">' +
+      (tri ? '<div class="dot'+tri+'"></div>' : '<div class="dot" style="background:'+dotColor+'"></div>') +
+      '<div class="lab">'+m.label+'</div><div class="val">'+fmt(m.val)+(m.unit||'')+'</div></div>';
+  });
+  return parts + '</div>';
+}
+
+/* 对齐标尺（线 / 现价 的相对位置） */
+function alignHTML(points){
+  var vals = points.map(function(p){ return p.val; }).filter(function(v){ return v!=null; });
+  if(!vals.length) return '';
+  var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  var pad = (max-min)*0.14 || (Math.abs(max)*0.01 || 1);
+  min -= pad; max += pad;
+  var span = (max-min) || 1;
+  var parts = '<div class="align"><div class="ln"></div>';
+  points.forEach(function(p){
+    if(p.val==null) return;
+    var x = (p.val-min)/span*100;
+    parts += '<div class="pt '+(p.kind==='px'?'px':'')+'" style="left:'+Math.max(1,Math.min(99,x)).toFixed(1)+'%" title="'+p.label+'"></div>';
+  });
+  parts += '</div><div class="cap" style="display:flex;justify-content:space-between">' +
+    '<span>'+points[0].label+'</span><span>'+points[points.length-1].label+'</span></div>';
+  return parts;
+}
+
+/* ADX 量能条：0~60 映射，20 / 25 两条分档线 */
+function adxGauge(v){
+  var top = 60;
+  var p = Math.max(0, Math.min(100, v/top*100));
+  var zone = v>=25 ? '强趋势' : (v<20 ? '弱趋势' : '中性');
+  return '<div class="gauge"><div class="ptr" style="left:'+p+'%"></div></div>' +
+    '<div class="zone"><span>弱 &lt;20</span><span>ADX '+fmt(v)+' · '+zone+'</span><span>&gt;25 强</span></div>';
+}
+
+function dirArrow(d){
+  if(d==='向上') return {sym:'↑', cls:'up'};
+  if(d==='向下') return {sym:'↓', cls:'down'};
+  return {sym:'→', cls:'flat'};
+}
+function dirHTML(d, lead, extra){
+  var a = dirArrow(d);
+  return '<div class="dirline"><span class="dir-arrow '+a.cls+'">'+a.sym+'</span>' +
+    '<span>'+lead+' <b>'+d+'</b></span>' +
+    (extra ? '<span class="muted">'+extra+'</span>' : '') + '</div>';
+}
+function chipHTML(name, d){
+  var a = dirArrow(d);
+  return '<span class="chip '+a.cls+'">'+name+' '+a.sym+'</span>';
+}
+function kv(k, v){ return '<div class="kv"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+function trendCls(t){ return t==='强趋势' ? 's-strong' : (t==='弱趋势' ? 's-weak' : 's-mid'); }
+
+/* =====================================================================
+   走势与净值：K 线 / 投资情况要素 / 净值曲线
+   （数据来自引擎里的 bt.py，与信号用同一批 K 线、同一个策略跑出来的）
+   ===================================================================== */
+var CLR = { red:'#e24b4a', green:'#2f8a3b', fg:'#1d1d1f', muted:'#86868b',
+            line:'#e8e8ed', blue:'#3a6ea5', violet:'#8a5bd6', amber:'#c8860d',
+            gray:'#c9c9cf' };
+var PORT = '__PORT__';
+
+function mdLabel(d){ return d ? d.slice(5) : ''; }          // 2026-09-18 -> 09-18
+function signCls(v){ return v > 0 ? 'risk' : (v < 0 ? 'reward' : ''); }
+
+/* ---- 日 K 线（含当前有效趋势线 + 买卖点）---- */
+function klineSVG(ch){
+  var m = (ch.c || []).length;
+  if(m < 2) return '';
+  var W = 820, H = 340, PL = 8, PR = 62, PT = 14, PB = 26;
+  // 价格轴只用蜡烛的高低点。趋势线外推会很远，若把它们算进来，
+  // 蜡烛会被挤成一条带子（这是第一版踩到的坑）。
+  var lo = Math.min.apply(null, ch.l), hi = Math.max.apply(null, ch.h);
+  var pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+  var span = hi - lo || 1;
+  var bw = (W - PL - PR) / m;
+  var X = function(i){ return PL + i * bw + bw / 2; };
+  var Y = function(p){ return PT + (hi - p) / span * (H - PT - PB); };
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img">';
+
+  // 价格网格 + 右轴刻度
+  for(var k=0;k<=4;k++){
+    var pv = hi - span * k / 4, gy = Y(pv);
+    s += '<line x1="'+PL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+gy.toFixed(1)+
+         '" stroke="'+CLR.line+'" stroke-width="1"/>';
+    s += '<text x="'+(W-PR+7)+'" y="'+(gy+3.6).toFixed(1)+'" font-size="11" fill="'+CLR.muted+'">'+
+         num(pv, pv>=1000?0:1)+'</text>';
+  }
+
+  // 蜡烛（红涨绿跌）
+  var cw = Math.max(1, Math.min(10, bw * 0.66));
+  for(var i=0;i<m;i++){
+    var x = X(i), up = ch.c[i] >= ch.o[i];
+    var col = up ? CLR.red : CLR.green;
+    s += '<line x1="'+x.toFixed(1)+'" y1="'+Y(ch.h[i]).toFixed(1)+'" x2="'+x.toFixed(1)+
+         '" y2="'+Y(ch.l[i]).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
+    var y1 = Y(Math.max(ch.o[i], ch.c[i])), y2 = Y(Math.min(ch.o[i], ch.c[i]));
+    s += '<rect x="'+(x-cw/2).toFixed(1)+'" y="'+y1.toFixed(1)+'" width="'+cw.toFixed(1)+
+         '" height="'+Math.max(1, y2-y1).toFixed(1)+'" fill="'+col+'"/>';
+  }
+
+  // 趋势线：角色线（安全线/行动线）优先；其余按"离现价近"取前 3 条，
+  // 并把每条裁剪到价格轴可见区间（线是单调的，最多进出一次）
+  var gLast = ch.i0 + m - 1, pxLast = ch.c[m - 1];
+  var lv = function(L){ return L.ap + L.s * (gLast - L.ai); };
+  var roles = (ch.lines || []).filter(function(L){ return !!L.role; });
+  var others = (ch.lines || []).filter(function(L){ return !L.role; })
+    .sort(function(a, b){ return Math.abs(lv(a) - pxLast) - Math.abs(lv(b) - pxLast); })
+    .slice(0, 3);
+  roles.concat(others).forEach(function(L){
+    var segs = [], cur = [];
+    var iEnd = (L.role === 'broken' && L.bi != null) ? Math.min(m - 1, L.bi) : m - 1;
+    for(var i=0;i<=iEnd;i++){
+      var g = ch.i0 + i;
+      if(g < L.ai){ if(cur.length > 1) segs.push(cur); cur = []; continue; }
+      var v = L.ap + L.s * (g - L.ai);
+      if(v >= lo && v <= hi){ cur.push(X(i).toFixed(1)+','+Y(v).toFixed(1)); }
+      else { if(cur.length > 1) segs.push(cur); cur = []; }
+    }
+    if(cur.length > 1) segs.push(cur);
+    if(!segs.length) return;
+    var col = L.role === 'safe' ? CLR.blue
+            : (L.role === 'action' ? CLR.violet
+            : (L.role === 'pend' ? CLR.amber : CLR.gray));
+    var tip = L.role === 'safe' ? '安全线（止损/离场依据）'
+            : (L.role === 'action' ? '行动线（当初破它入场）'
+            : (L.role === 'pend' ? '待突破线（收盘破它才出信号）'
+            : (L.role === 'broken' ? '已破位的重要趋势线（转势参考）' : '趋势线')));
+    segs.forEach(function(seg){
+      s += '<polyline fill="none" stroke="'+col+'" stroke-width="'+(L.role ? 2 : 1)+'"'+
+           (L.role === 'broken' ? ' stroke-dasharray="6 4"' : (L.role ? '' : ' stroke-dasharray="4 4"'))+
+           ' opacity="'+(L.role === 'broken' ? 0.8 : (L.role ? 0.95 : 0.65))+
+           '" stroke-linecap="round" points="'+seg.join(' ')+'"><title>'+tip+
+           '（触点 '+L.t+'）</title></polyline>';
+    });
+    if(L.role === 'broken' && L.bi != null){
+      var gb = ch.i0 + L.bi, vb = L.ap + L.s * (gb - L.ai);
+      if(vb >= lo && vb <= hi){
+        s += '<path d="M '+(X(L.bi)-4).toFixed(1)+' '+(Y(vb)-4).toFixed(1)+
+             ' L '+(X(L.bi)+4).toFixed(1)+' '+(Y(vb)+4).toFixed(1)+
+             ' M '+(X(L.bi)-4).toFixed(1)+' '+(Y(vb)+4).toFixed(1)+
+             ' L '+(X(L.bi)+4).toFixed(1)+' '+(Y(vb)-4).toFixed(1)+
+             '" stroke="'+CLR.fg+'" stroke-width="1.5" opacity=".85" fill="none"><title>'+
+             tip+'（触点 '+L.t+'，× = 收盘破位点）</title></path>';
+      }
+    }
+  });
+
+  // 买卖点（入场三角 + 出场圈，连线按盈亏上色；均值回归单用方块标记）
+  var clampY = function(v){ return Math.max(PT+6, Math.min(H-PB-6, v)); };
+  (ch.trades || []).forEach(function(t){
+    var xe = X(t.ei), ye = Y(t.ep), xx = X(t.xi), yx = Y(t.xp);
+    var col = t.p > 0 ? CLR.red : CLR.green;
+    s += '<line x1="'+xe.toFixed(1)+'" y1="'+ye.toFixed(1)+'" x2="'+xx.toFixed(1)+'" y2="'+
+         yx.toFixed(1)+'" stroke="'+col+'" stroke-width="1" opacity=".4"/>';
+    var ty = clampY(t.d === 'L' ? ye + 13 : ye - 13);
+    var dir = t.d === 'L' ? 1 : -1;
+    if(t.m){
+      s += '<rect x="'+(xe-5.5).toFixed(1)+'" y="'+(ty-5.5).toFixed(1)+'" width="11" height="11" '+
+           'fill="'+col+'" opacity=".92"><title>【均值回归】'+(t.d==='L'?'做多':'做空')+' '+t.ep+
+           ' → '+t.xp+'　'+num(t.p,1)+' 点·手 / '+t.l+' 手</title></rect>';
+    } else {
+      s += '<polygon points="'+xe.toFixed(1)+','+(ty+5*dir).toFixed(1)+' '+(xe-6).toFixed(1)+','+
+           (ty-7*dir).toFixed(1)+' '+(xe+6).toFixed(1)+','+(ty-7*dir).toFixed(1)+
+           '" fill="'+col+'"><title>'+(t.d==='L'?'做多':'做空')+' '+t.ep+' → '+t.xp+
+           '　'+num(t.p,1)+' 点·手 / '+t.l+' 手</title></polygon>';
+    }
+    s += '<circle cx="'+xx.toFixed(1)+'" cy="'+yx.toFixed(1)+'" r="3.4" fill="#fff" stroke="'+
+         col+'" stroke-width="1.7"/>';
+  });
+
+  // 日期刻度
+  for(var q=0;q<5;q++){
+    var idx = Math.round(q * (m - 1) / 4);
+    var tx = Math.max(PL+2, Math.min(W-PR-30, X(idx)-15));
+    s += '<text x="'+tx.toFixed(1)+'" y="'+(H-8)+'" font-size="11" fill="'+CLR.muted+'">'+
+         mdLabel(ch.d[idx])+'</text>';
+  }
+  return s + '</svg>';
+}
+
+/* ---- 净值曲线（累计每手净点数）---- */
+function equitySVG(eq, dates){
+  var n = (eq || []).length;
+  if(n < 2) return '';
+  var W = 820, H = 180, PL = 8, PR = 62, PT = 16, PB = 24;
+  var lo = Math.min.apply(null, eq), hi = Math.max.apply(null, eq);
+  if(lo > 0) lo = 0;
+  if(hi < 0) hi = 0;
+  var pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+  var span = hi - lo || 1;
+  var X = function(i){ return PL + i * (W - PL - PR) / (n - 1); };
+  var Y = function(v){ return PT + (hi - v) / span * (H - PT - PB); };
+
+  var pts = [], area = [];
+  for(var i=0;i<n;i++){ pts.push(X(i).toFixed(1)+','+Y(eq[i]).toFixed(1)); }
+  area.push(X(0).toFixed(1)+','+Y(Math.max(Math.min(0,hi), lo)).toFixed(1));
+  area = area.concat(pts);
+  area.push(X(n-1).toFixed(1)+','+Y(Math.max(Math.min(0,hi), lo)).toFixed(1));
+
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img">';
+  for(var k=0;k<=3;k++){
+    var v = hi - span * k / 3, gy = Y(v);
+    s += '<line x1="'+PL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+gy.toFixed(1)+
+         '" stroke="'+CLR.line+'" stroke-width="1"/>';
+    s += '<text x="'+(W-PR+7)+'" y="'+(gy+3.6).toFixed(1)+'" font-size="11" fill="'+CLR.muted+'">'+
+         num(v, Math.abs(v)>=100?0:1)+'</text>';
+  }
+  var y0 = Y(0);
+  if(y0 > PT && y0 < H-PB){
+    s += '<line x1="'+PL+'" y1="'+y0.toFixed(1)+'" x2="'+(W-PR)+'" y2="'+y0.toFixed(1)+
+         '" stroke="'+CLR.fg+'" stroke-width="1" stroke-dasharray="5 4" opacity=".35"/>';
+  }
+  s += '<polygon fill="'+CLR.blue+'" opacity=".10" points="'+area.join(' ')+'"/>';
+  s += '<polyline fill="none" stroke="'+CLR.blue+'" stroke-width="2" stroke-linejoin="round" points="'+
+       pts.join(' ')+'"/>';
+  s += '<circle cx="'+X(n-1).toFixed(1)+'" cy="'+Y(eq[n-1]).toFixed(1)+'" r="3.2" fill="'+
+       CLR.blue+'"/>';
+
+  // 峰值 / 谷值
+  var mi = 0, ni = 0;
+  for(var j=0;j<n;j++){ if(eq[j] > eq[mi]) mi = j; if(eq[j] < eq[ni]) ni = j; }
+  s += '<text x="'+Math.max(PL+2,Math.min(W-PR-70,X(mi)-20)).toFixed(1)+'" y="'+
+       Math.max(PT+10, Y(eq[mi])-6).toFixed(1)+'" font-size="11" fill="'+CLR.muted+'">峰值 '+
+       num(eq[mi], Math.abs(eq[mi])>=100?0:1)+'</text>';
+  if(ni !== mi){
+    s += '<text x="'+Math.max(PL+2,Math.min(W-PR-70,X(ni)-20)).toFixed(1)+'" y="'+
+         Math.min(H-PB-4, Y(eq[ni])+14).toFixed(1)+'" font-size="11" fill="'+CLR.muted+'">谷值 '+
+         num(eq[ni], Math.abs(eq[ni])>=100?0:1)+'</text>';
+  }
+  if(dates && dates.length === n){
+    for(var q2=0;q2<4;q2++){
+      var ix = Math.round(q2 * (n - 1) / 3);
+      var tx = Math.max(PL+2, Math.min(W-PR-30, X(ix)-15));
+      s += '<text x="'+tx.toFixed(1)+'" y="'+(H-7)+'" font-size="11" fill="'+CLR.muted+'">'+
+           mdLabel(dates[ix])+'</text>';
+    }
+  }
+  return s + '</svg>';
+}
+
+/* ---- 市场状态色带（识别组件产出，与 K 线窗口逐根对齐）---- */
+var RG_COLOR = { B:'#e24b4a', S:'#2f8a3b', R:'#2563eb', T:'#c9c9cf' };
+var RG_NAME  = { BULL:'多头', BEAR:'空头', RANGE:'震荡', TRANSITION:'过渡' };
+function regimeStripSVG(strip, m){
+  if(!strip) return '';
+  var tail = strip.slice(-m);
+  var W = 820, H = 22, PL = 8, PR = 62;
+  var bw = (W - PL - PR) / Math.max(1, tail.length);
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img">';
+  for(var i=0;i<tail.length;i++){
+    var c = RG_COLOR[tail.charAt(i)] || RG_COLOR.T;
+    s += '<rect x="'+(PL+i*bw).toFixed(2)+'" y="4" width="'+Math.max(1,bw+0.3).toFixed(2)+
+         '" height="'+(H-8)+'" fill="'+c+'"><title>'+
+         (RG_NAME[({B:'BULL',S:'BEAR',R:'RANGE',T:'TRANSITION'})[tail.charAt(i)]] || '过渡')+
+         '</title></rect>';
+  }
+  return s + '</svg>';
+}
+
+/* ---- 最近 N 天市场状态（色点，取 regime_strip 末 N 位；红多头/绿空头/蓝震荡/灰过渡）---- */
+var RG_CODE = { B:'BULL', S:'BEAR', R:'RANGE', T:'TRANSITION' };
+function regimeDots(strip, n){
+  if(!strip) return '<span style="color:var(--muted)">—</span>';
+  var tail = strip.slice(-n);
+  var out = '';
+  for(var i=0;i<tail.length;i++){
+    var k = tail.charAt(i);
+    var c = RG_COLOR[k] || RG_COLOR.T;
+    var nm = RG_NAME[RG_CODE[k]] || '过渡';
+    out += '<i class="rg-dot" style="background:'+c+'" title="'+nm+'"></i>';
+  }
+  return out;
+}
+
+/* ---- 策略对比：原版 tori vs 市场识别引导 ---- */
+function compareHTML(s){
+  var a = s.stats, b = s.stats_reg;
+  if(!a || !b) return '';
+  var num2 = function(v, d){ return (v==null ? '—' : num(v, d)); };
+  var cls = function(v){ return v==null ? '' : (v>0 ? 'risk' : (v<0 ? 'reward' : '')); };
+  var diff = (b.pnl_per_lot==null || a.pnl_per_lot==null) ? null : b.pnl_per_lot - a.pnl_per_lot;
+  var verdict = diff==null ? '—'
+    : (diff >= 0 ? '识别引导版每手多挣 <b>'+num(diff,1)+'</b> 点' : '原版每手多挣 <b>'+num(-diff,1)+'</b> 点');
+  var rows = [
+    ['累计净盈亏（每手）', num2(a.pnl_per_lot,1)+' 点', num2(b.pnl_per_lot,1)+' 点', cls(a.pnl_per_lot), cls(b.pnl_per_lot)],
+    ['交易笔数', a.trades+'（多'+a.longs+' / 空'+a.shorts+'）', b.trades+'（多'+b.longs+' / 空'+b.shorts+'）', '', ''],
+    ['其中均值回归', '—', (b.mr_trades||0)+' 笔', '', ''],
+    ['胜率', num2(a.win_rate,1)+'%', num2(b.win_rate,1)+'%', '', ''],
+    ['盈亏比 PF', num2(a.pf,2), num2(b.pf,2), '', ''],
+    ['最大回撤', num2(a.max_dd,1)+' 点·手', num2(b.max_dd,1)+' 点·手', 'reward', 'reward'],
+    ['平均持仓', num2(a.avg_held,1)+' 根', num2(b.avg_held,1)+' 根', '', ''],
+  ];
+  var trs = rows.map(function(r){
+    return '<tr><td>'+r[0]+'</td><td class="'+r[3]+'">'+r[1]+'</td><td class="'+r[4]+'">'+r[2]+'</td></tr>';
+  }).join('');
+  return '<table class="cmp"><thead><tr><th>指标</th><th>原版 tori</th><th>识别引导版</th></tr></thead>' +
+         '<tbody>'+trs+'</tbody></table>' +
+         '<div class="note-line">同一种 K 线、同一时段、同一套 tori 止损/保本/分批规则，' +
+         '只把「什么时候允许开什么仓」交给市场识别分流。结论：<b>'+verdict+'</b>（每手口径）。</div>';
+}
+
+/* ---- 投资情况要素 ---- */
+function statsHTML(st, isPort){
+  var mv = function(k, v, sub, cls){
+    return '<div class="m'+(cls?' '+cls:'')+'"><div class="k">'+k+'</div><div class="v">'+v+
+           (sub?'<small> '+sub+'</small>':'')+'</div></div>';
+  };
+  /* 等权组合：只统计"一篮子平均"，所以指标名和单标的完全不同 */
+  if(isPort){
+    var p = st;
+    var pg = '<div class="grid">' +
+      mv('组合累计净盈亏（每手）', num(p.pnl_per_lot,1)+'<small> 点</small>', '', signCls(p.pnl_per_lot)) +
+      mv('标的数', p.n_inst, '等权') +
+      mv('正收益标的占比', (p.win_inst_pct==null?'—':num(p.win_inst_pct,1)+'%'),
+         p.win_inst+' / '+p.n_inst+' 个') +
+      mv('平均每标的', num(p.avg_inst,1), '点/手') +
+      mv('组合最大回撤', num(p.max_dd,1), '点', 'reward') +
+      mv('回测交易日', p.bars, '天') +
+    '</div>';
+    var pex = '<div style="margin-top:12px">' +
+      kv('区间', p.start+' → '+p.end) +
+      kv('表现最好', '<span style="color:var(--red)">' +
+         (p.best_inst ? p.best_inst.name+' '+num(p.best_inst.pnl,1)+' 点' : '—')+'</span>') +
+      kv('表现最差', '<span style="color:var(--green)">' +
+         (p.worst_inst ? p.worst_inst.name+' '+num(p.worst_inst.pnl,1)+' 点' : '—')+'</span>') +
+    '</div>' +
+    '<div class="note-line">等权组合 = 每个标的各自跑一遍 tori 策略，' +
+    '再把各自的「累计每手净点数」按交易日对齐后取算术平均。' +
+    '它只回答"这套规则在一篮子标的上平均每手能挣多少点"，' +
+    '不含相关性、不含资金分配，不等于真实组合收益。</div>';
+    return pg + pex;
+  }
+
+  var pnl = st.pnl_per_lot;
+  var body = '<div class="grid">' +
+    mv('累计净盈亏（每手）', num(pnl,1) + '<small> 点</small>', '', signCls(pnl)) +
+    mv('交易笔数', st.trades, '多 '+st.longs+' · 空 '+st.shorts) +
+    mv('胜率', (st.win_rate==null?'—':num(st.win_rate,1)+'%'), (st.wins==null?'':(st.wins+' 胜 / '+st.losses+' 负'))) +
+    mv('盈亏比 PF', (st.pf==null?'—':num(st.pf,2)), '总盈利 ÷ 总亏损') +
+    mv('最大回撤', num(st.max_dd,1), '点·手', 'reward') +
+    mv('平均每笔', num(st.avg_trade,1), '点·手') +
+    mv('平均持仓', num(st.avg_held,1), '根 K 线') +
+    mv('平均手数', num(st.avg_lots,2), '手/笔') +
+    mv('0.38R 保本触发', st.be_hits, '笔') +
+    mv('FVG 分批', st.splits, '笔') +
+    (st.mr_trades ? mv('均值回归', st.mr_trades, '笔') : '') +
+    mv('回测 K 线', st.bars, '根') +
+    mv('区间', '<span style="font-size:14px">'+st.start.slice(0,7)+' ~ '+st.end.slice(0,7)+'</span>', '') +
+  '</div>';
+
+  var extra = '';
+  if(st.best && st.worst){
+    extra = '<div style="margin-top:12px">' +
+      kv('最佳单笔', '<span style="color:var(--red)">'+num(st.best.pnl,1)+' 点·手</span>'+
+         '（'+st.best.date+' · '+(st.best.dir==='long'?'多':'空')+'）') +
+      kv('最差单笔', '<span style="color:var(--green)">'+num(st.worst.pnl,1)+' 点·手</span>'+
+         '（'+st.worst.date+' · '+(st.worst.dir==='long'?'多':'空')+'）') +
+      kv('最大回撤区间', (st.max_dd_range || ['—','—']).join(' → ')) +
+      kv('当前持仓', st.open_pos ? (st.open_pos==='long'?'多头持仓中':'空头持仓中') : '空仓（未计入以上统计）') +
+    '</div>';
+  }
+  return body + extra;
+}
+
+/* ---- 组装「走势与净值」卡片 ---- */
+function buildExplorer(d){
+  var sigs = (d.signals || []).filter(function(s){ return s.chart; });
+  var pf = d.portfolio, pfReg = d.portfolio_reg;
+  var card = document.createElement('div');
+  card.className = 'card explorer';
+  if(!sigs.length && !pf){
+    card.innerHTML = '<div class="panel-title">走势与净值</div>' +
+      '<div class="note-line">当前数据没有走势明细（可能是沿用了旧快照）。' +
+      '重新运行引擎后再看，或点上方「选择信号 JSON」载入完整数据。</div>';
+    return card;
+  }
+
+  // 默认选第一个标的（直接看到 K 线），等权组合放在最后
+  var opts = sigs.map(function(s){
+    return '<option value="'+s.code+'">'+s.name+' · '+s.code+'</option>';
+  });
+  if(pf) opts.push('<option value="'+PORT+'">—— 全部等权组合（'+pf.stats.n_inst+' 个标的）——</option>');
+
+  card.innerHTML =
+    '<div class="panel-title">走势与净值' +
+      '<span>' +
+        '<select id="varSel" style="min-width:150px">' +
+          '<option value="orig">原版 tori 策略</option>' +
+          '<option value="reg">市场识别引导版</option>' +
+        '</select>' +
+        '<select id="instSel">'+opts.join('')+'</select>' +
+      '</span>' +
+    '</div>' +
+    '<div class="exp-sub" id="expSub"></div>' +
+    '<div id="expBody"></div>';
+
+  var byCode = {};
+  sigs.forEach(function(s){ byCode[s.code] = s; });
+  var sel = card.querySelector('#instSel');
+  var varSel = card.querySelector('#varSel');
+  var sub = card.querySelector('#expSub');
+  var body = card.querySelector('#expBody');
+
+  function regimeBadge(st, dur){
+    if(!st) return '';
+    var map = { BULL:['多头','var(--red)','rgba(226,75,74,.10)'],
+                BEAR:['空头','var(--green)','rgba(47,138,59,.10)'],
+                RANGE:['震荡','#2563eb','rgba(37,99,235,.10)'],
+                TRANSITION:['过渡','#6b7078','#f0f0f2'] };
+    var z = map[st] || map.TRANSITION;
+    return '<span class="mini" style="color:'+z[1]+';background:'+z[2]+'">市场状态 '+z[0]+
+           (dur ? ' · 已持续 '+dur+' 根' : '')+'</span>';
+  }
+
+  function paint(){
+    var reg = varSel.value === 'reg';
+    var v = sel.value;
+    if(v === PORT){
+      var use = (reg && pfReg) ? pfReg : pf;
+      if(!use){ body.innerHTML = '<div class="note-line">没有'+(reg?'引导版':'原版')+'组合数据。</div>'; return; }
+      var ps = use.stats;
+      sub.innerHTML = '<span class="pill">'+(reg ? '识别引导版' : '原版 tori')+' · 等权组合</span>' +
+        '<span>'+ps.n_inst+' 个标的等权（各自「累计每手净点数」按交易日对齐后取平均）</span>' +
+        '<span>· '+ps.start+' ~ '+ps.end+'（'+ps.bars+' 个交易日）</span>';
+      body.innerHTML =
+        '<div class="exp-sect">组合净值曲线</div>' +
+        '<div class="chart-wrap"><div class="chart-cap">累计每手净点数（等权组合）</div>' +
+          equitySVG(use.eq, use.d) + '</div>' +
+        '<div class="exp-sect">投资情况要素</div>' +
+        statsHTML(ps, true);
+      return;
+    }
+    var s = byCode[v];
+    if(!s){ body.innerHTML = ''; return; }
+    var hasReg = !!s.chart_reg;
+    if(reg && !hasReg){ reg = false; }
+    var ch = reg ? s.chart_reg : s.chart;
+    var st = reg ? (s.stats_reg || {}) : (s.stats || {});
+    var dir = s.recommendation === '看多' ? 'long'
+            : (s.recommendation === '看空' ? 'short' : 'hold');
+    sub.innerHTML =
+      '<span class="mini '+dir+'">'+s.recommendation+(s.lots>0?(' · '+s.lots+' 手'):' · 空仓')+'</span>' +
+      regimeBadge(s.regime_now, s.regime_dur) +
+      '<span>'+num(s.price,2)+'</span>' +
+      '<span>· 趋势强弱 '+s.trend+'（ADX '+num(s.adx,1)+' '+s.adx_dir+'）</span>' +
+      (s.stop_loss!=null ? '<span>· 止损 '+num(s.stop_loss,2)+'</span>' : '') +
+      '<span>· 回测 '+st.trades+' 笔 / 每手 '+num(st.pnl_per_lot,1)+' 点</span>';
+
+    // 图例按"这张图上真的有哪几条线"动态生成，不摆空头条目
+    var hasRole = {};
+    (ch.lines || []).forEach(function(L){ if(L.role) hasRole[L.role] = 1; });
+    var leg = [
+      '<span><i style="background:'+CLR.red+'"></i>阳线（收 ≥ 开）</span>',
+      '<span><i style="background:'+CLR.green+'"></i>阴线（收 &lt; 开）</span>'
+    ];
+    if(hasRole.safe) leg.push('<span><i style="background:'+CLR.blue+'"></i>安全线（止损 / 离场依据）</span>');
+    if(hasRole.action) leg.push('<span><i style="background:'+CLR.violet+'"></i>行动线（当初破它入场）</span>');
+    if(hasRole.pend) leg.push('<span><i style="background:'+CLR.amber+'"></i>待突破线（收盘破它才出信号）</span>');
+    if(hasRole.broken) leg.push('<span><i style="background:'+CLR.gray+'"></i>已破位的重要趋势线（× = 收盘破位点）</span>');
+    leg.push('<span><i style="background:'+CLR.gray+'"></i>其他有效趋势线</span>');
+    leg.push('<span>▲▼ 开仓　○ 平仓　<span style="display:inline-block;width:9px;height:9px;'+
+             'background:#888;vertical-align:middle;margin:0 2px;"></span>均值回归开仓　连线<b>红=盈利 / 绿=亏损</b></span>');
+
+    body.innerHTML =
+      '<div class="exp-sect">日 K 线 · 趋势线与买卖点</div>' +
+      '<div class="chart-wrap">' +
+        '<div class="chart-cap">'+s.name+'　最近 '+ch.c.length+' 根日线（'+ch.d[0]+' ~ '+
+          ch.d[ch.d.length-1]+'）</div>' +
+        klineSVG(ch) +
+      '</div>' +
+      '<div class="exp-legend">' + leg.join('') + '</div>' +
+      '<div class="exp-sect">市场状态色带（识别组件 · 与上方 K 线逐根对齐）</div>' +
+      '<div class="chart-wrap"><div class="chart-cap">红=多头　绿=空头　蓝=震荡（做均值回归）　灰=过渡（放行突破）</div>' +
+        regimeStripSVG(s.regime_strip, ch.c.length) + '</div>' +
+      '<div class="exp-sect">投资净值曲线</div>' +
+      '<div class="chart-wrap"><div class="chart-cap">累计每手净点数（'+(reg ? '市场识别引导版' : '原版 tori')+
+        '在同一批 K 线上逐笔累计）</div>' +
+        equitySVG(ch.eq, null) + '</div>' +
+      '<div class="exp-sect">投资情况要素</div>' +
+      statsHTML(st, false) +
+      (hasReg ? '<div class="exp-sect">策略对比 · 原版 vs 识别引导</div>' + compareHTML(s) : '') +
+      '<div class="note-line">口径：单笔盈亏 = Σ 各腿[手数 ×（出场 − 入场）× 方向]，单位「点·手」；' +
+      '「每手净点数」= 点·手 ÷ 该笔手数。净值曲线为累计每手净点数，' +
+      '所以不同价位量级（指数 1000~8000）与不同手数之间可以直接比。' +
+      '最后一笔若仍持仓，不计入以上统计。' +
+      (reg && d.regime_note ? '<br><b>引导规则：</b>' + d.regime_note : '') +
+      '</div>';
+  }
+  sel.addEventListener('change', paint);
+  varSel.addEventListener('change', paint);
+  paint();
+  return card;
+}
+
+function render(d){
+  document.getElementById('meta').textContent = '更新时间 ' + d.updated_at + ' · 周期 ' + (d.period||'') +
+    ' · 市场' + (d.market_open ? '开盘中' : '已收盘') + ' · ' + d.source;
+  var list = document.getElementById('list');
+  list.innerHTML = '';
+
+  /* ===== 顶部汇总表 ===== */
+  var rows = (d.signals || []).map(function(s){
+    var dir = s.recommendation==='看多' ? 'long' : (s.recommendation==='看空' ? 'short' : 'hold');
+    var lotsTxt = s.lots>0 ? (s.lots + ' 手') : '空仓';
+    return '<tr class="jump-row" data-code="'+s.code+
+           '" data-rec="'+s.recommendation+
+           '" data-trend="'+s.trend+
+           '" data-lots="'+s.lots+'">' +
+      '<td class="idx">'+s.name+'<small>'+s.code+'</small></td>' +
+      '<td><span class="mini '+dir+'">'+s.recommendation+' · '+lotsTxt+'</span></td>' +
+      '<td title="最近 5 个交易日市场状态：红=多头 绿=空头 蓝=震荡 灰=过渡">'+regimeDots(s.regime_strip,5)+'</td>' +
+      '<td class="trend '+trendCls(s.trend)+'">'+s.trend+'</td>' +
+      '<td class="num">'+fmt(s.adx)+' <span style="color:'+(s.adx_rising?'var(--long)':'var(--short)')+'">'+(s.adx_rising?'↑':'↓')+'</span></td>' +
+      '<td class="num">'+(s.lots>0 ? (s.lots+' 手') : '—')+'</td>' +
+      '<td class="num">'+fmt(s.price)+'</td>' +
+      '<td class="num risk">'+fmt(s.stop_loss)+'</td>' +
+      '<td class="num reward">'+fmt(s.be_line)+'</td>' +
+    '</tr>';
+  }).join('');
+  var sum = document.createElement('div');
+  sum.className = 'card summary';
+  sum.innerHTML =
+    '<div class="panel-title">信号汇总 · <span id="summaryCount">显示 '+(d.signals||[]).length+' / '+(d.signals||[]).length+' 个</span>（点击行跳转，顶部筛选可隐藏）</div>' +
+    '<div class="filter-bar" id="filterBar">' +
+      '<div class="group"><span class="group-label">方向</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="看多" checked>看多</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="看空" checked>看空</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="rec" value="中性" checked>中性</label>' +
+      '</div>' +
+      '<div class="group"><span class="group-label">趋势强弱</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="强趋势" checked>强</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="中性" checked>中</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="trend" value="弱趋势" checked>弱</label>' +
+      '</div>' +
+      '<div class="group"><span class="group-label">手数</span>' +
+        '<label class="chip on"><input type="checkbox" data-filter="lots" value="2" checked>2 手</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="lots" value="1" checked>1 手</label>' +
+        '<label class="chip on"><input type="checkbox" data-filter="lots" value="0" checked>空仓</label>' +
+      '</div>' +
+      '<button type="button" class="filter-reset" id="filterReset">全选</button>' +
+    '</div>' +
+    '<div class="summary-wrap"><table>' +
+      '<thead><tr><th>标的</th><th>方向</th><th>近5日状态</th><th>趋势强弱</th><th>ADX</th><th>手数</th><th>现价</th><th>止损(安全线)</th><th>保本线</th></tr></thead>' +
+      '<tbody>'+rows+'</tbody>' +
+    '</table></div>';
+  list.appendChild(sum);
+  var jumpTrs = sum.querySelectorAll('tr.jump-row');
+  Array.prototype.forEach.call(jumpTrs, function(tr){
+    tr.addEventListener('click', function(){
+      var el = document.getElementById('card-' + tr.getAttribute('data-code'));
+      if (el) {
+        el.scrollIntoView({behavior:'smooth', block:'start'});
+        el.classList.add('jump-flash');
+        setTimeout(function(){ el.classList.remove('jump-flash'); }, 1200);
+      }
+    });
+  });
+
+  /* ===== 走势与净值（汇总表下方，可切换标的）===== */
+  list.appendChild(buildExplorer(d));
+
+  /* ===== 逐个标的卡片 ===== */
+  (d.signals || []).forEach(function(s){
+    var rec = s.recommendation;
+    var dir = rec==='看多' ? 'long' : (rec==='看空' ? 'short' : 'hold');
+    var ind = s.indicators || {};
+    var hasPos = s.lots > 0;
+    var trendPill = s.trend==='强趋势' ? 'strong' : (s.trend==='弱趋势' ? 'weak' : 'neutral');
+
+    /* --- 开仓阶梯 --- */
+    var mk = [{label:'现价', val:s.price, cls:'cur'}];
+    if(s.stop_loss!=null) mk.push({label:'止损', val:s.stop_loss, cls:'sl'});
+    if(s.be_line!=null)   mk.push({label:'保本线', val:s.be_line, cls:'be'});
+    if(s.fvg_stop!=null)  mk.push({label:'分批腿止损', val:s.fvg_stop, cls:'fvgsl'});
+    if(s.fvg!=null && s.fvg_stop==null) mk.push({label:'FVG外沿', val:s.fvg.edge, cls:'fvgsl'});
+    var scale = scaleHTML(mk);
+    var slDist = (s.stop_loss!=null) ? num(Math.abs(s.stop_loss - s.price), 2) : '—';
+    var beDist = (s.be_line!=null) ? num(Math.abs(s.be_line - s.price), 2) : '—';
+
+    /* --- 趋势线（Tori） --- */
+    var L = s.lines || {};
+    var toriPts, toriDir, toriExtra, toriChips, toriTag, toriTagCls;
+    if (hasPos) {
+      var sf = L.safety, ac = L.action;
+      toriPts = [
+        {label:'行动线', val:ac?ac.p:null, kind:'ln'},
+        {label:'安全线', val:sf?sf.p:null, kind:'ln'},
+        {label:'现价',   val:s.price, kind:'px'}
+      ];
+      toriDir = sf ? sf.dir : '走平';
+      toriExtra = (sf ? ('安全线斜率 '+num(sf.slope_pct,4)+'%/根 · 触点 '+sf.touches+' 个') : '');
+      toriTag = hasPos ? (rec==='看多' ? '多头持仓' : '空头持仓') : '—';
+      toriTagCls = rec==='看多' ? 'up' : (rec==='看空' ? 'down' : 'flat');
+      toriChips =
+        (ac ? chipHTML('行动线', ac.dir) : '') +
+        (sf ? chipHTML('安全线', sf.dir) : '') +
+        '<span class="chip flat">行动线触点 '+((ac&&ac.touches)||0)+'</span>' +
+        '<span class="chip flat">安全线触点 '+((sf&&sf.touches)||0)+'</span>';
+    } else {
+      var pl = L.pend_long, ps = L.pend_short;
+      toriPts = [
+        {label:'下破线', val:ps?ps.p:null, kind:'ln'},
+        {label:'现价',   val:s.price, kind:'px'},
+        {label:'上破线', val:pl?pl.p:null, kind:'ln'}
+      ];
+      toriDir = '走平';
+      toriExtra = '空仓中：等收盘突破这两条线中的任意一条才会出现方向';
+      toriTag = '空仓';
+      toriTagCls = 'flat';
+      toriChips =
+        (pl ? chipHTML('上破→做多', pl.dir) : '') +
+        (ps ? chipHTML('下破→做空', ps.dir) : '') +
+        '<span class="chip flat">可用的趋势线 '+(ind.n_lines||0)+' 条</span>';
+    }
+
+    /* --- ADX --- */
+    var adxCls = s.adx_rising ? 'up' : 'down';
+    var adxTag = s.trend==='强趋势' ? '强趋势' : (s.trend==='弱趋势' ? '弱趋势' : '中性');
+
+    /* --- FVG --- */
+    var fv = s.fvg;
+    var fc = (s.fvg_cand || {});
+    var fvgTag, fvgTagCls, fvgBody;
+    if (fv) {
+      fvgTag = fv.capped ? '夹子生效' : 'FVG 外沿止损';
+      fvgTagCls = fv.capped ? 'warn' : 'violet';
+      fvgBody =
+        kv('本笔为分批单', '分批腿止损 '+fmt(s.fvg_stop)) +
+        kv('缺口外沿（靠外那条边）', fmt(fv.edge)+' <span style="color:var(--muted)">（'+fv.date+'）</span>') +
+        kv('外沿距现价', num(fv.dist,2)+' 点 · '+num(fv.dist_atr,2)+'×ATR') +
+        kv('1×ATR 夹子', fv.capped ? '<span style="color:#a36a00">已生效</span>（外沿离原止损过远，改用 原止损 ∓1×ATR）' : '未生效（外沿在原止损 1×ATR 以内）');
+    } else {
+      var cand = (rec==='看空' ? fc.short : fc.long) || fc.long || fc.short;
+      var side = (rec==='看空' && fc.short) ? '空头' : '多头';
+      fvgTag = cand ? ('若开 2 手 · '+side) : '暂无缺口';
+      fvgTagCls = cand ? 'violet' : 'flat';
+      fvgBody = cand ? (
+        kv('最近同向 FVG 外沿', fmt(cand.edge)+' <span style="color:var(--muted)">（'+cand.date+'）</span>') +
+        kv('缺口内沿（靠内那条边）', fmt(cand.near)) +
+        kv('若此刻按 2 手开仓，分批腿止损', fmt(cand.stop)) +
+        kv('外沿距现价', num(cand.dist,2)+' 点 · '+num(cand.dist_atr,2)+'×ATR') +
+        kv('1×ATR 夹子', cand.capped ? '<span style="color:#a36a00">已生效</span>' : '未生效（外沿在原止损 1×ATR 以内）')
+      ) : ('<div class="kv"><span class="k">'+side+'方向'+((ind.fvg_max_age)||30)+' 根内没有可用缺口</span>'+
+           '<span class="v">分批单退化为单一腿</span></div>' +
+           kv('识别窗口', ((ind.fvg_max_age)||30)+' 根 K 线；已被填满的缺口不算') +
+           kv('夹子阈值', ((ind.fvg_cap_atr)||1)+'×ATR'));
+    }
+    fvgBody += kv('规则', '2 手单才分批：1 手挂 FVG 外沿，另 1 手按安全线止损');
+
+    /* --- 仓位与风控 --- */
+    var posBody = hasPos ? (
+      kv('方向 / 手数', rec + ' · ' + s.lots + ' 手') +
+      kv('开仓时间 / 入场价', s.entry_time + ' ｜ ' + fmt(s.entry)) +
+      kv('已持有', s.held_bars + ' 根 K 线') +
+      kv('单笔风险（1R）', num(s.risk_pts,2) + ' 点') +
+      kv('止损来源', s.stop_src==='be' ? '<span style="color:var(--reward)">保本线接管</span>' : '安全线推进') +
+      kv('0.38R 保本', '触发价 '+fmt(s.be_line)+(s.be_hit ? ' <span style="color:var(--reward)">（已触发）</span>' : '（未触发）')) +
+      kv('离场规则', '<span style="color:var(--muted)">'+(s.exit_rule||'—')+'</span>')
+    ) : (
+      kv('当前仓位', '空仓') +
+      kv('若触发进场，ADX 建议', s.lots_suggest + ' 手') +
+      kv('参考开仓价', fmt(s.entry) + '（现价）') +
+      kv('0.38R 保本', '开仓后浮盈达 0.38R，止损抬到保本') +
+      kv('离场规则', '<span style="color:var(--muted)">收盘回到安全线另一侧就走</span>') +
+      kv('冷却期', '平仓后 '+(s.cooldown_bars||2)+' 根 K 线内不再开仓')
+    );
+
+    var card = document.createElement('div');
+    card.className = 'card detail-card';
+    card.id = 'card-' + s.code;
+    card.setAttribute('data-rec', rec);
+    card.setAttribute('data-trend', s.trend);
+    card.setAttribute('data-lots', s.lots);
+    card.innerHTML =
+      '<div class="top">' +
+        '<div><span class="name">'+s.name+'</span><span class="code">'+s.code+'</span></div>' +
+        '<div class="price">'+fmt(s.price)+'<small class="'+(s.chg_pct>0?'up':(s.chg_pct<0?'down':''))+'">'+
+          (s.chg_pct==null?'':(s.chg_pct>0?'+':'')+s.chg_pct+'%')+' 最新</small></div>' +
+      '</div>' +
+      '<div class="badges">' +
+        '<span class="badge '+dir+'">'+rec+(hasPos?(' · '+s.lots+' 手'):' · 空仓')+'</span>' +
+        '<span class="pill '+trendPill+'">趋势强弱 '+s.trend+'</span>' +
+        '<span class="pill">ADX '+fmt(s.adx)+' '+s.adx_dir+'</span>' +
+        '<span class="pill" title="最近 5 个交易日市场状态：红=多头 绿=空头 蓝=震荡 灰=过渡">近5日 '+regimeDots(s.regime_strip,5)+'</span>' +
+        '<span class="pill'+(s.be_hit?' be-on':'')+'">0.38R 保本'+(s.be_hit?' 已触发':'')+'</span>' +
+      '</div>' +
+
+      '<div class="panel trade">' +
+        '<div class="panel-title">开仓信息</div>' +
+        scale +
+        '<div class="grid">' +
+          '<div class="m hl"><div class="k">开仓参考价</div><div class="v">'+fmt(s.entry)+'</div></div>' +
+          '<div class="m risk"><div class="k">止损价（安全线）</div><div class="v">'+fmt(s.stop_loss)+(s.stop_loss!=null?'<small> 距 '+slDist+'</small>':'')+'</div></div>' +
+          '<div class="m reward"><div class="k">保本线 · 0.38R</div><div class="v">'+fmt(s.be_line)+(s.be_line!=null?'<small> 距 '+beDist+'</small>':'')+'</div></div>' +
+          '<div class="m"><div class="k">手数</div><div class="v">'+(hasPos? s.lots+' 手' : (s.lots_suggest+' 手<small> 待触发</small>'))+'</div></div>' +
+          '<div class="m"><div class="k">ATR（波动）</div><div class="v">'+fmt(s.atr)+'<small> '+fmt(s.atr_pct)+'%</small></div></div>' +
+          '<div class="m"><div class="k">ADX（趋势强弱）</div><div class="v">'+fmt(s.adx)+'</div></div>' +
+          '<div class="m"><div class="k">昨收</div><div class="v">'+fmt(s.prev_close)+'</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="panel ind">' +
+        '<div class="panel-title">指标信息</div>' +
+        '<div class="indi-grid">' +
+          '<div class="sub"><h4>趋势线（Tori）<span class="tag '+toriTagCls+'">'+toriTag+'</span></h4>' +
+            alignHTML(toriPts) +
+            dirHTML(toriDir, hasPos ? '安全线方向' : '当前方向', toriExtra) +
+            '<div class="ma-chips">'+toriChips+'</div>' +
+          '</div>' +
+          '<div class="sub"><h4>ADX（趋势强弱）<span class="tag '+adxCls+'">'+adxTag+'</span></h4>' +
+            adxGauge(s.adx) +
+            kv('与策略阈值 20 的关系', s.adx>20 ? '在 20 以上（够格开 2 手）' : '在 20 以下（只能 1 手）') +
+            kv('上一根 ADX', fmt(s.adx_prev)+' → 本根 '+fmt(s.adx)) +
+            kv('分档', '≥25 强趋势 ｜ 20~25 中性 ｜ &lt;20 弱趋势') +
+            kv('择时手数', 'ADX&gt;20 且连涨 2 点 → 2 手；否则 1 手' + (hasPos ? (ind.lots_now+' 手（本笔）') : '')) +
+          '</div>' +
+          '<div class="sub"><h4>FVG（分批止损）<span class="tag '+fvgTagCls+'">'+fvgTag+'</span></h4>' +
+            fvgBody +
+          '</div>' +
+          '<div class="sub"><h4>仓位与风控<span class="tag '+(hasPos?dir:'flat')+'">'+(hasPos? rec : '空仓')+'</span></h4>' +
+            posBody +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      (s.reasons && s.reasons.length ? '<ul class="reasons">' + s.reasons.map(function(r){
+        var t = (typeof r === 'string') ? r : r.t;
+        var c = (typeof r === 'string') ? '' : (r.c||'');
+        return '<li class="'+c+'">'+t+'</li>';
+      }).join('') + '</ul>' : '');
+    list.appendChild(card);
+  });
+
+  /* ===== 筛选条：方向 / 趋势强弱 / 手数 ===== */
+  function applyFilter(){
+    var recs = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="rec"]:checked'), function(i){return i.value;});
+    var trends = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="trend"]:checked'), function(i){return i.value;});
+    var lotsSel = Array.prototype.map.call(
+      document.querySelectorAll('input[data-filter="lots"]:checked'), function(i){return i.value;});
+    var total = 0, shown = 0;
+    document.querySelectorAll('tr.jump-row').forEach(function(tr){
+      var v = recs.indexOf(tr.dataset.rec)>=0
+            && trends.indexOf(tr.dataset.trend)>=0
+            && lotsSel.indexOf(String(tr.dataset.lots))>=0;
+      tr.style.display = v ? '' : 'none';
+      total++; if (v) shown++;
+    });
+    document.querySelectorAll('.detail-card').forEach(function(c){
+      var v = recs.indexOf(c.dataset.rec)>=0
+            && trends.indexOf(c.dataset.trend)>=0
+            && lotsSel.indexOf(String(c.dataset.lots))>=0;
+      c.style.display = v ? '' : 'none';
+    });
+    document.querySelectorAll('#filterBar .chip').forEach(function(c){
+      var cb = c.querySelector('input[type=checkbox]');
+      c.classList.toggle('on', cb && cb.checked);
+      c.classList.toggle('off', cb && !cb.checked);
+    });
+    var sc = document.getElementById('summaryCount');
+    if (sc) sc.textContent = '显示 ' + shown + ' / ' + total + ' 个';
+  }
+  document.querySelectorAll('#filterBar input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', applyFilter);
+  });
+  document.getElementById('filterReset').addEventListener('click', function(){
+    document.querySelectorAll('#filterBar input[type=checkbox]').forEach(function(cb){cb.checked = true;});
+    applyFilter();
+  });
+}
+</script>
+</body>
+</html>
