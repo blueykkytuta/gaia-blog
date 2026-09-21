@@ -1,0 +1,16 @@
+/* 行业资金流动长图（2026-09-18 数据）文章专用
+   ------------------------------------------------------------
+   这批图是 869×1282 的竖版长图，不能套 .post-figure：
+   style.css 里那条 .post-figure img 强制 aspect-ratio 16/10 + object-fit cover，
+   会把竖图裁成一条横带。这里只给留白，比例交给全局 img 规则与
+   <img width height> 属性（浏览器据此预留高度，避免加载时跳动）。
+   做成独立文件是因为站点铁律「改 CSS/JS 必须换新文件名」——同名会被 CF 缓存。
+   ------------------------------------------------------------ */
+
+.post-body .flow-figure { margin: 5.5vh 0; }
+.post-body .flow-figure:first-child { margin-top: 0; }
+.post-body .flow-figure:last-child { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .post-body .flow-figure { margin: 4vh 0; }
+}
