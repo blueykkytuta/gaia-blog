@@ -1,0 +1,23 @@
+/* 多图长文的章节小标题（文章页专用 · 2026-09-21）
+   背景：.post-body 原本只有 p / figure 两层，多图文章需要一个中间层级
+   把「每张图的题目 + 总结」分隔开。做成独立文件而不是改 style.css，
+   是因为站点铁律「改 CSS/JS 必须换新文件名」——同名资源会被 CF 缓存。 */
+
+.post-body h2 {
+  margin: 7.5vh 0 0.55em;
+  font-size: clamp(21px, 2.5vw, 27px);
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+}
+
+/* 紧跟在正文段之后的第一个 h2 不再吃上边距（避免段落与标题拉开过大） */
+.post-body h2:first-child { margin-top: 0; }
+
+/* 章节标题后的总结段与图靠得更近，形成「题—文—图」一组 */
+.post-body h2 + p { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .post-body h2 { margin-top: 5.5vh; font-size: 20px; }
+}
