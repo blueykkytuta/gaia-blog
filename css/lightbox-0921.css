@@ -1,0 +1,164 @@
+/* ============================================================
+   Carrycore 文章图片灯箱（v1 · 2026-09-21）
+   只在文章页（posts/*.html）引入，不影响首页与其它页面。
+
+   行为：点击正文图片 → 当前页面内全屏查看（不跳转、不开新页）
+         ← / → 或左右按钮切换同一篇文章的所有图片
+         Esc / 右上角 × / 点击图片外空白 关闭
+         双击图片在「适应屏幕」与「原始尺寸 1:1」之间切换
+   ============================================================ */
+
+/* 有 JS 时才显示放大光标，禁用 JS 时不给错误暗示 */
+html.cc-lb-on .post-body img { cursor: zoom-in; }
+
+/* 键盘可达（Tab 到图片）时的焦点提示 */
+html.cc-lb-on .post-body img:focus-visible {
+  outline: 2px solid var(--ink, #1D1D1F);
+  outline-offset: 3px;
+}
+
+/* 打开时锁滚动（位置由 JS 记录并恢复） */
+html.cc-lb-lock,
+html.cc-lb-lock body { overflow: hidden; }
+
+.cc-lb {
+  position: fixed;
+  inset: 0;
+  z-index: 90000;
+  background: rgba(0, 0, 0, .93);
+  opacity: 0;
+  transition: opacity .22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.cc-lb.cc-lb-in { opacity: 1; }
+
+/* 舞台：overflow:auto + 图片 margin:auto
+   —— 图片小于舞台时居中；放到 1:1 大于舞台时可滚动到四角（不会截断左上角） */
+.cc-lb-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: auto;
+  padding: 60px 76px 84px;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+
+.cc-lb-img {
+  margin: auto;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 2px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+  transition: transform .22s ease;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* 原始尺寸 1:1（双击切换） */
+.cc-lb-img.cc-lb-zoom {
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+}
+
+/* ---- 按钮 ---- */
+.cc-lb-close,
+.cc-lb-nav {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.cc-lb-close:hover,
+.cc-lb-nav:hover { background: rgba(255, 255, 255, .24); }
+.cc-lb-close:active,
+.cc-lb-nav:active { transform: scale(.94); }
+.cc-lb-close:focus-visible,
+.cc-lb-nav:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.cc-lb-close {
+  top: 16px;
+  right: 16px;
+  width: 42px;
+  height: 42px;
+}
+.cc-lb-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+}
+.cc-lb-nav:active { transform: translateY(-50%) scale(.94); }
+.cc-lb-prev { left: 16px; }
+.cc-lb-next { right: 16px; }
+
+/* 只有一张图时隐藏箭头 */
+.cc-lb-nav[hidden] { display: none; }
+
+.cc-lb-close svg,
+.cc-lb-nav svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- 底部：图注 + 计数 ---- */
+.cc-lb-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  justify-content: center;
+  padding: 30px 20px calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0, 0, 0, .55), transparent);
+  color: rgba(255, 255, 255, .78);
+  font-size: 12.5px;
+  line-height: 1.5;
+  letter-spacing: .02em;
+  pointer-events: none;
+  text-align: center;
+}
+.cc-lb-cap:empty { display: none; }
+.cc-lb-cnt {
+  flex: none;
+  color: rgba(255, 255, 255, .5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 窄屏 ---- */
+@media (max-width: 640px) {
+  .cc-lb-stage { padding: 54px 10px 72px; }
+  .cc-lb-close { top: 10px; right: 10px; width: 38px; height: 38px; }
+  .cc-lb-nav { width: 40px; height: 40px; }
+  .cc-lb-prev { left: 6px; }
+  .cc-lb-next { right: 6px; }
+  .cc-lb-close svg,
+  .cc-lb-nav svg { width: 20px; height: 20px; }
+  .cc-lb-bar { font-size: 12px; padding-top: 24px; }
+}
+
+/* ---- 尊重「减少动态效果」偏好 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cc-lb,
+  .cc-lb-img,
+  .cc-lb-close,
+  .cc-lb-nav { transition: none; }
+}
