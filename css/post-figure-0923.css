@@ -1,0 +1,18 @@
+/* 横版信息图文章专用（2026-09-23 红利投资逻辑）
+   ------------------------------------------------------------
+   这批图是 1920×1088 的横版信息图，不能套 .post-figure：
+   style.css 里的 .post-figure img 强制 aspect-ratio 16/10 + object-fit cover，
+   会把 1.765 的图左右各裁掉约 5%——图上边缘的坐标轴标签与右侧图例框会被切掉，
+   而且不报错、肉眼很难发现。
+   这里只给留白，比例交给全局 img{width:100%;height:auto} 与
+   <img width height> 属性（浏览器据此预留高度，避免加载时跳动）。
+   独立文件是站点铁律「改 CSS 必须换新文件名」——同名会被 CF 缓存住。
+   ------------------------------------------------------------ */
+
+.post-body .fig-plain { margin: 5.5vh 0; }
+.post-body .fig-plain:first-child { margin-top: 0; }
+.post-body .fig-plain:last-child { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .post-body .fig-plain { margin: 4vh 0; }
+}
